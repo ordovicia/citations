@@ -1,0 +1,10 @@
+[package]
+name = "citations"
+version = "0.1.0"
+authors = ["Hidehito Yabuuchi <hdht.ybuc@gmail.com>"]
+
+[dependencies]
+error-chain = "0.11.0"
+lazy_static = "0.2.9"
+regex = "0.2.2"
+select = "0.4.2"
