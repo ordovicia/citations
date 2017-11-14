@@ -1,4 +1,4 @@
-[WIP] citations
+[WIP] citations [![Build Status](https://travis-ci.org/ordovicia/citations.svg?branch=master)](https://travis-ci.org/ordovicia/citations)
 ===============
 
 Scrapes [Google Scholar](https://scholar.google.com) to enumerate papers by which a given paper is cited.
