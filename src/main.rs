@@ -35,6 +35,10 @@ fn run() -> Result<()> {
         target_paper.id
     );
 
+    for paper in scrape::scrape_cite_papers(&html)? {
+        println!(r#""{}" (id: {})"#, paper.name, paper.id);
+    }
+
     Ok(())
 }
 
