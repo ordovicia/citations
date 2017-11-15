@@ -1,9 +1,7 @@
-citations [![Build Status](https://travis-ci.org/ordovicia/citations.svg?branch=master)](https://travis-ci.org/ordovicia/citations)
-===============
+scholar [![Build Status](https://travis-ci.org/ordovicia/scholar.svg?branch=master)](https://travis-ci.org/ordovicia/scholar)
+=======
 
-Scrapes [Google Scholar](https://scholar.google.com) to enumerate papers by which a given paper is cited.
-
-This program does **not** send a request; only analyzes a given HTML file locally.
+Google Scholar scraper written in Rust.
 
 ## Usage
 ```

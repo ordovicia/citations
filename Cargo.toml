@@ -1,6 +1,6 @@
 [package]
 authors = ["Hidehito Yabuuchi <hdht.ybuc@gmail.com>"]
-name = "citations"
+name = "scholar"
 version = "0.1.0"
 
 [dependencies]
