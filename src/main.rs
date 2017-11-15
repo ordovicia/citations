@@ -8,66 +8,124 @@ extern crate regex;
 extern crate reqwest;
 extern crate select;
 
+use std::fs;
+
 pub mod request;
 pub mod scrape;
 pub mod paper;
 pub mod errors;
 
-use clap::{App, Arg, ArgGroup};
+use clap::{App, Arg /* ArgGroup */};
 
-use scrape::SearchDocument;
+use scrape::{CitersDocument, SearchDocument};
 use errors::*;
 
 quick_main!(run);
 
 fn run() -> Result<()> {
     let matches = App::new(env!("CARGO_PKG_NAME"))
+        .version(crate_version!())
         .arg(
             Arg::with_name("count")
                 .short("c")
                 .long("count")
                 .help("Maximum number of results")
-                .takes_value(true),
+                .takes_value(true)
+                .display_order(0)
         )
         .arg(
             Arg::with_name("words")
                 .short("w")
                 .long("words")
                 .help("Search papers with these words")
-                .takes_value(true),
+                .takes_value(true)
+                .display_order(1)
         )
         .arg(
             Arg::with_name("phrase")
                 .short("p")
                 .long("phrase")
                 .help("Search papers with this exact phrase")
-                .takes_value(true),
+                .takes_value(true)
+                .display_order(2)
         )
-        .group(
-            ArgGroup::with_name("words_phrase")
-                .args(&["words", "phrase"])
-                .multiple(true)
-                .required(true),
+        // .group(
+        //     ArgGroup::with_name("search")
+        //         .args(&["words", "phrase"])
+        //         .multiple(true),
+        // )
+        .arg(
+            Arg::with_name("search-html")
+                .long("search-html")
+                .help("HTML file of search results")
+                .takes_value(true)
+                .display_order(3)
         )
-        .after_help("Either words or phrase is required")
+        .arg(
+            Arg::with_name("cite-html")
+                .long("cite-html")
+                .help("HTML file of citers list")
+                .takes_value(true)
+                .display_order(4)
+        )
+        // .group(ArgGroup::with_name("html").args(&["search-html", "cite-html"]))
+        // .group(
+        //     ArgGroup::with_name("input")
+        //         .args(&["search", "html"])
+        //         .required(true),
+        // )
         .get_matches();
 
-    let mut query = request::SearchQuery::new();
+    if let Some(citers_file) = matches.value_of("cite-html") {
+        let file = fs::File::open(citers_file)?;
+        let doc = CitersDocument::from_read(file)?;
 
-    if let Some(_) = matches.value_of("count") {
-        let count = value_t!(matches, "count", u32).unwrap_or_else(|e| e.exit());
-        query.set_count(count);
-    }
-    if let Some(words) = matches.value_of("words") {
-        query.set_words(words.to_string());
-    }
-    if let Some(phrase) = matches.value_of("phrase") {
-        query.set_phrase(phrase.to_string());
+        run_citers_document(&doc)?;
+    } else {
+        let search_doc = if let Some(search_file) = matches.value_of("search-html") {
+            let file = fs::File::open(search_file)?;
+            SearchDocument::from_read(file)?
+        } else {
+            let mut query = request::SearchQuery::new();
+
+            if matches.is_present("count") {
+                let count = value_t!(matches, "count", u32).unwrap_or_else(|e| e.exit());
+                query.set_count(count);
+            }
+            if let Some(words) = matches.value_of("words") {
+                query.set_words(words.to_string());
+            }
+            if let Some(phrase) = matches.value_of("phrase") {
+                query.set_phrase(phrase.to_string());
+            }
+
+            let body = request::send_query(&query)?;
+            SearchDocument::from(&body as &str)
+        };
+
+        run_search_document(&search_doc)?;
     }
 
-    let body = request::send_query(&query)?;
-    let search_doc = SearchDocument::from(&body as &str);
-    for paper in search_doc.scrape_papers()? {
+    Ok(())
+}
+
+fn run_citers_document(doc: &CitersDocument) -> Result<()> {
+    let target_paper = doc.scrape_target_paper()?;
+    println!(
+        r#""{}" (id: {})" is cited by:"#,
+        target_paper.title,
+        target_paper.id
+    );
+
+    for paper in doc.scrape_papers()? {
+        println!(r#""{}" (id: {})"#, paper.title, paper.id);
+    }
+
+    Ok(())
+}
+
+fn run_search_document(doc: &SearchDocument) -> Result<()> {
+    for paper in doc.scrape_papers()? {
         println!(r#""{}" (id: {})"#, paper.title, paper.id);
     }
 
