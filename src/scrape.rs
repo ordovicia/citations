@@ -1,7 +1,7 @@
 use std::io;
 use std::ops::Deref;
-use regex::Regex;
 
+use regex::Regex;
 use select::document::Document;
 use select::node::Node;
 use select::predicate::{Attr, Class, Name, Predicate, Text};
@@ -26,11 +26,6 @@ impl Deref for PapersDocument {
 }
 
 impl PapersDocument {
-    // pub fn is_citing_document(&self) -> bool {
-    //     let pos = Attr("id", "gs_rt_hdr");
-    //     self.find(pos).len() > 0
-    // }
-
     pub fn scrape_papers(&self) -> Result<Vec<Paper>> {
         let pos = Attr("id", "gs_res_ccl_mid").descendant(Class("gs_ri"));
         let nodes = self.find(pos);
@@ -44,20 +39,87 @@ impl PapersDocument {
     }
 
     fn scrape_paper_one(node: &Node) -> Result<Paper> {
-        let title = {
-            let pos = Class("gs_rt").child(Name("a").or(Text));
-            let n = try_option_html!(node.find(pos).nth(0));
-            n.text()
-        };
-
-        let id = {
-            let pos = Class("gs_fl").child(Class("gs_nph"));
-            let n = try_option_html!(node.find(pos).nth(1));
-            let id_url = try_option_html!(n.attr("href"));
-            parse_id_from_url(&id_url)?.to_string()
-        };
+        let title = Self::scrape_title(node);
+        let (id, _) = Self::scrape_id_and_citation(node)?;
 
         Ok(Paper { title, id })
+    }
+
+    // There are (at least) two formats.
+    //
+    // 1. Link to a paper or something:
+    //
+    // <h3 class="gs_rt">
+    //   <span>
+    //       something
+    //   </span>
+    //   <a href="http://paper.pdf">
+    //     Title of paper or something
+    //   </a>
+    // </h3>
+    //
+    // 'span' may not exists.
+    //
+    // 2. Not a link:
+    //
+    // <h3 class="gs_rt">
+    //   <span>
+    //       something
+    //   </span>
+    //   Title of paper or something
+    // </h3>
+    fn scrape_title(node: &Node) -> String {
+        // 1. Link to a paper or something
+        let pos = Class("gs_rt").child(Name("a"));
+        if let Some(n) = node.find(pos).nth(0) {
+            return n.text();
+        }
+
+        // 2. Not a link
+        let pos = Class("gs_rt").child(Text);
+        node.find(pos)
+            .map(|n| n.text())
+            .collect::<String>()
+            .trim()
+            .to_string()
+    }
+
+    // Scrape article footer for
+    //
+    // * cluster id, and
+    // * citation count
+    //
+    // Format:
+    //
+    // <div class="gs_fl">
+    //   something
+    //   <a href="/scholar?cites=000000>Cited by 999</a>
+    //   something
+    // </div>
+    fn scrape_id_and_citation(node: &Node) -> Result<(String, u32)> {
+        let pos = Class("gs_fl");
+        let footers = try_option_html!(node.find(pos).nth(0)).children();
+
+        let citation_node = footers
+            .into_selection()
+            .filter(|n: &Node| {
+                if let Some(id_url) = n.attr("href") {
+                    parse_id_from_url(id_url).is_ok()
+                } else {
+                    false
+                }
+            })
+            .first();
+        let citation_node = try_option_html!(citation_node);
+
+        let id = {
+            let id_url = citation_node.attr("href").unwrap();
+            parse_id_from_url(&id_url).unwrap().to_string()
+        };
+
+        let citation_count = parse_citation_count(&citation_node.text())?;
+
+        Ok((id, citation_count))
     }
 }
 
@@ -103,7 +165,9 @@ impl CitersDocument {
 
     pub fn scrape_target_paper(&self) -> Result<Paper> {
         let node = {
-            let pos = Attr("id", "gs_rt_hdr").child(Name("h2")).child(Name("a"));
+            let pos = Attr("id", "gs_rt_hdr")
+                .child(Name("h2"))
+                .child(Name("a").or(Text));
             try_option_html!(self.find(pos).nth(0))
         };
 
@@ -127,23 +191,32 @@ fn parse_id_from_url(url: &str) -> Result<&str> {
     Ok(id.as_str())
 }
 
+fn parse_citation_count(text: &str) -> Result<u32> {
+    lazy_static! {
+        static ref RE: Regex = Regex::new(r"[^\d]+(\d+)").unwrap();
+    }
+
+    let caps = try_option_html!(RE.captures(text));
+    let count = {
+        let count = try_option_html!(caps.get(1));
+        count.as_str().parse().unwrap()
+    };
+    Ok(count)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    macro_rules! assert_eq_result {
-        ($result: expr, $expected: expr) => {
-            assert!($result.is_ok());
-            assert_eq!($result.unwrap(), $expected);
-        }
-    }
-
     #[test]
     fn parse_id_from_url_pass() {
-        assert_eq_result!(parse_id_from_url("cluster=000000"), "000000");
-        assert_eq_result!(parse_id_from_url("scholar?cluster=111111"), "111111");
-        assert_eq_result!(
-            parse_id_from_url("scholar?cluster=222222&foo=bar"),
+        assert_eq!(parse_id_from_url("cluster=000000").unwrap(), "000000");
+        assert_eq!(
+            parse_id_from_url("scholar?cluster=111111").unwrap(),
+            "111111"
+        );
+        assert_eq!(
+            parse_id_from_url("scholar?cluster=222222&foo=bar").unwrap(),
             "222222"
         );
     }
@@ -153,5 +226,16 @@ mod tests {
         assert!(parse_id_from_url("foo").is_err());
         assert!(parse_id_from_url("claster=000000").is_err());
         assert!(parse_id_from_url("cluster=aaaaaa").is_err());
+    }
+
+    #[test]
+    fn parse_citation_count_pass() {
+        assert_eq!(parse_citation_count("Cited by 111").unwrap(), 111);
+        assert_eq!(parse_citation_count("引用元 222").unwrap(), 222);
+    }
+
+    #[test]
+    fn parse_citation_count_fail() {
+        assert!(parse_citation_count("foo").is_err());
     }
 }

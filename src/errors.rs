@@ -1,14 +1,11 @@
 error_chain!{
     foreign_links {
+        Num(::std::num::ParseIntError);
         Io(::std::io::Error);
         Reqwest(::reqwest::Error);
     }
 
     errors {
-        // Cli(e: String) {
-        //     description("CLI usage error")
-        //     display("{}", e)
-        // }
         BadHtml {
             description("Bad HTML structure")
         }
