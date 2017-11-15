@@ -114,7 +114,7 @@ impl PapersDocument {
 
         let id = {
             let id_url = citation_node.attr("href").unwrap();
-            parse_id_from_url(&id_url).unwrap().to_string()
+            parse_id_from_url(id_url).unwrap().to_string()
         };
 
         let citation_count = parse_citation_count(&citation_node.text())?;
@@ -174,7 +174,7 @@ impl CitersDocument {
         let title = node.text();
         let id = {
             let id_url = try_option_html!(node.attr("href"));
-            parse_id_from_url(&id_url)?.to_string()
+            parse_id_from_url(id_url)?.to_string()
         };
 
         Ok(Paper { title, id })

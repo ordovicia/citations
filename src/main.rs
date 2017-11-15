@@ -86,17 +86,17 @@ fn run() -> Result<()> {
             let file = fs::File::open(search_file)?;
             SearchDocument::from_read(file)?
         } else {
-            let mut query = request::SearchQuery::new();
+            let mut query = request::SearchQuery::default();
 
             if matches.is_present("count") {
                 let count = value_t!(matches, "count", u32).unwrap_or_else(|e| e.exit());
                 query.set_count(count);
             }
             if let Some(words) = matches.value_of("words") {
-                query.set_words(words.to_string());
+                query.set_words(words);
             }
             if let Some(phrase) = matches.value_of("phrase") {
-                query.set_phrase(phrase.to_string());
+                query.set_phrase(phrase);
             }
 
             let body = request::send_query(&query)?;

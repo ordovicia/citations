@@ -59,14 +59,16 @@ impl Query for SearchQuery {
     }
 }
 
-impl SearchQuery {
-    pub fn new() -> Self {
+impl Default for SearchQuery {
+    fn default() -> Self {
         SearchQuery {
             count: DEFAULT_COUNT,
             words: None,
         }
     }
+}
 
+impl SearchQuery {
     pub fn get_count(&self) -> u32 {
         self.count
     }
@@ -74,7 +76,7 @@ impl SearchQuery {
     /// ```
     /// use scholar::request::SearchQuery;
     ///
-    /// let mut q = SearchQuery::new();
+    /// let mut q = SearchQuery::default();
     /// assert_eq!(q.get_count(), 1);
     ///
     /// q.set_count(2);
@@ -92,19 +94,19 @@ impl SearchQuery {
     /// ```
     /// use scholar::request::SearchQuery;
     ///
-    /// let mut q = SearchQuery::new();
+    /// let mut q = SearchQuery::default();
     /// assert!(q.get_words().is_none());
     ///
-    /// q.set_words(String::from("foo"));
+    /// q.set_words("foo");
     /// assert_eq!(q.get_words(), &Some(String::from("foo")));
     /// ```
-    pub fn set_words(&mut self, words: String) {
+    pub fn set_words(&mut self, words: &str) {
         match self.words {
             Some(ref mut w) => {
-                w.push_str(&words);
+                w.push_str(words);
             }
             None => {
-                self.words = Some(words);
+                self.words = Some(words.to_string());
             }
         }
     }
@@ -112,13 +114,13 @@ impl SearchQuery {
     /// ```
     /// use scholar::request::SearchQuery;
     ///
-    /// let mut q = SearchQuery::new();
+    /// let mut q = SearchQuery::default();
     ///
-    /// q.set_phrase(String::from("foo bar"));
+    /// q.set_phrase("foo bar");
     /// assert_eq!(q.get_words(), &Some(String::from("\"foo bar\"")));
     /// ```
-    pub fn set_phrase(&mut self, phrase: String) {
-        self.set_words(format!("\"{}\"", phrase));
+    pub fn set_phrase(&mut self, phrase: &str) {
+        self.set_words(&format!("\"{}\"", phrase));
     }
 
     fn is_valid(&self) -> bool {
@@ -132,12 +134,12 @@ mod tests {
 
     #[test]
     fn search_query_set_query_count() {
-        let mut q = SearchQuery::new();
+        let mut q = SearchQuery::default();
         let mut url = Url::parse("https://example.com").unwrap();
 
         const NEW_COUNT: u32 = DEFAULT_COUNT + 1;
         q.set_count(NEW_COUNT);
-        q.set_words(String::from("foo"));
+        q.set_words("foo");
         q.set_query(&mut url).unwrap();
         assert_eq!(
             url,
@@ -147,10 +149,10 @@ mod tests {
 
     #[test]
     fn search_query_set_query_words() {
-        let mut q = SearchQuery::new();
+        let mut q = SearchQuery::default();
         let mut url = Url::parse("https://example.com").unwrap();
 
-        q.set_words(String::from("foo bar"));
+        q.set_words("foo bar");
         q.set_query(&mut url).unwrap();
         assert_eq!(
             url,
@@ -163,10 +165,10 @@ mod tests {
 
     #[test]
     fn search_query_set_query_phrase() {
-        let mut q = SearchQuery::new();
+        let mut q = SearchQuery::default();
         let mut url = Url::parse("https://example.com").unwrap();
 
-        q.set_phrase(String::from("foo bar"));
+        q.set_phrase("foo bar");
         q.set_query(&mut url).unwrap();
         assert_eq!(
             url,
@@ -179,15 +181,15 @@ mod tests {
 
     #[test]
     fn search_query_is_valid_pass() {
-        let mut q = SearchQuery::new();
+        let mut q = SearchQuery::default();
 
-        q.set_words(String::from("foo"));
+        q.set_words("foo");
         assert!(q.is_valid());
     }
 
     #[test]
     fn search_query_is_valid_fail() {
-        let q = SearchQuery::new();
+        let q = SearchQuery::default();
         assert!(!q.is_valid());
     }
 }
