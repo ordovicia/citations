@@ -18,3 +18,13 @@ OPTIONS:
         --search-html <search-html>    HTML file of search results
         --cite-html <cite-html>        HTML file of citers list
 ```
+
+## Note
+
+**Do not abuse**.
+If you send request too frequently, Google Scholar blocks your access temporarily.
+Currently, this program outputs nothing when blocked.
+
+## Similar Projects
+
+* Inspired by [ckreibich/scholar.py](https://github.com/ckreibich/scholar.py)
