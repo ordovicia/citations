@@ -1,8 +1,12 @@
+#![allow(dead_code)]
+#![allow(unused_imports)]
+
 #[macro_use]
 extern crate error_chain;
 #[macro_use]
 extern crate lazy_static;
 extern crate regex;
+extern crate reqwest;
 extern crate select;
 
 use std::env;
@@ -11,6 +15,7 @@ use std::path::PathBuf;
 
 use select::document::Document;
 
+mod request;
 mod scrape;
 mod errors;
 

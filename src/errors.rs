@@ -1,6 +1,7 @@
 error_chain!{
     foreign_links {
         Io(::std::io::Error);
+        Reqwest(::reqwest::Error);
     }
 
     errors {
@@ -10,6 +11,9 @@ error_chain!{
         }
         BadHtml {
             description("Bad HTML structure")
+        }
+        InvalidQuery {
+            description("Invalid query")
         }
     }
 }
