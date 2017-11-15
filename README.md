@@ -3,10 +3,18 @@ scholar [![Build Status](https://travis-ci.org/ordovicia/scholar.svg?branch=mast
 
 Google Scholar scraper written in Rust.
 
-## Usage
 ```
-$ cargo run file
-```
+USAGE:
+    scholar [OPTIONS] <--words <words>|--phrase <phrase>>
 
-where `file` is a downloaded HTML file of a citation page
-(e.g. `https://scholar.google.com/scholar?cites=8174092782678430881&as_sdt=2005&sciodt=0,5&hl=en`).
+FLAGS:
+    -h, --help       Prints help information
+    -V, --version    Prints version information
+
+OPTIONS:
+    -c, --count <count>      Maximum number of results
+    -p, --phrase <phrase>    Search papers with this exact phrase
+    -w, --words <words>      Search papers with these words
+
+Either words or phrase is required
+```

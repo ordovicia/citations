@@ -5,62 +5,39 @@ use select::document::Document;
 use select::node::Node;
 use select::predicate::{Attr, Class, Name, Predicate};
 
-use super::Paper;
+use paper::Paper;
 use errors::*;
-
-pub struct TargetPaperDocument(pub Document);
-pub struct CitingPaperDocument(pub Document);
-
-impl Deref for TargetPaperDocument {
-    type Target = Document;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl Deref for CitingPaperDocument {
-    type Target = Document;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
 
 macro_rules! try_option_html {
     ($a: expr) => { $a.ok_or(ErrorKind::BadHtml)? }
 }
 
-impl CitingPaperDocument {
-    pub fn scrape_target_paper(&self) -> Result<Paper> {
-        let node = {
-            let pos = Attr("id", "gs_rt_hdr")
-                .descendant(Name("h2"))
-                .descendant(Name("a"));
-            try_option_html!(self.find(pos).nth(0))
-        };
+pub struct PapersDocument(Document);
+pub struct SearchDocument(PapersDocument);
+pub struct CitingDocument(PapersDocument);
 
-        let name = node.text();
+impl Deref for PapersDocument {
+    type Target = Document;
 
-        let id_url = try_option_html!(node.attr("href"));
-        let id = parse_id_from_url(&id_url)?.to_string();
-
-        Ok(Paper { name, id })
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
+}
 
-    pub fn scrape_cite_papers(&self) -> Result<Vec<Paper>> {
-        let nodes = self.find(Class("gs_ri"));
+impl PapersDocument {
+    pub fn scrape_papers(&self) -> Result<Vec<Paper>> {
+        let nodes = self.find(Attr("id", "gs_res_ccl_mid").descendant(Class("gs_ri")));
 
         let mut papers = Vec::with_capacity(10);
         for n in nodes {
-            papers.push(CitingPaperDocument::scrape_cite_paper_one(&n)?);
+            papers.push(Self::scrape_paper_one(&n)?);
         }
 
         Ok(papers)
     }
 
-    fn scrape_cite_paper_one(node: &Node) -> Result<Paper> {
-        let name = {
+    fn scrape_paper_one(node: &Node) -> Result<Paper> {
+        let title = {
             let pos = Class("gs_rt").descendant(Name("a"));
             let n = try_option_html!(node.find(pos).nth(0));
             n.text()
@@ -73,7 +50,52 @@ impl CitingPaperDocument {
             parse_id_from_url(&id_url)?.to_string()
         };
 
-        Ok(Paper { name, id })
+        Ok(Paper { title, id })
+    }
+}
+
+impl Deref for SearchDocument {
+    type Target = PapersDocument;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<'a> From<&'a str> for SearchDocument {
+    fn from(s: &str) -> Self {
+        let document = Document::from(s);
+        SearchDocument(PapersDocument(document))
+    }
+}
+
+impl Deref for CitingDocument {
+    type Target = PapersDocument;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl CitingDocument {
+    pub fn new(document: Document) -> Self {
+        CitingDocument(PapersDocument(document))
+    }
+
+    pub fn scrape_target_paper(&self) -> Result<Paper> {
+        let node = {
+            let pos = Attr("id", "gs_rt_hdr")
+                .descendant(Name("h2"))
+                .descendant(Name("a"));
+            try_option_html!(self.find(pos).nth(0))
+        };
+
+        let title = node.text();
+
+        let id_url = try_option_html!(node.attr("href"));
+        let id = parse_id_from_url(&id_url)?.to_string();
+
+        Ok(Paper { title, id })
     }
 }
 

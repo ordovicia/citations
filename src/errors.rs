@@ -5,10 +5,10 @@ error_chain!{
     }
 
     errors {
-        Cli(e: String) {
-            description("CLI usage error")
-            display("{}", e)
-        }
+        // Cli(e: String) {
+        //     description("CLI usage error")
+        //     display("{}", e)
+        // }
         BadHtml {
             description("Bad HTML structure")
         }
