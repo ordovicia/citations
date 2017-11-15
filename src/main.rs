@@ -13,6 +13,8 @@ use select::document::Document;
 
 mod scrape;
 mod errors;
+
+use scrape::CitingPaperDocument;
 use errors::*;
 
 pub struct Paper {
@@ -23,19 +25,26 @@ pub struct Paper {
 quick_main!(run);
 
 fn run() -> Result<()> {
-    let html = {
+    // let mut query = request::SearchQuery::new();
+    // query.set_count(2);
+    // query.set_words(String::from("quantum pohe"));
+    // let body = request::send_query(&query)?;
+    // println!("{}", body);
+
+    let citings = {
         let file = get_file()?;
-        Document::from_read(file)?
+        let doc = Document::from_read(file)?;
+        CitingPaperDocument(doc)
     };
 
-    let target_paper = scrape::scrape_target_paper(&html)?;
+    let target_paper = citings.scrape_target_paper()?;
     println!(
         r#""{}" (id: {}) is cited by:"#,
         target_paper.name,
         target_paper.id
     );
 
-    for paper in scrape::scrape_cite_papers(&html)? {
+    for paper in citings.scrape_cite_papers()? {
         println!(r#""{}" (id: {})"#, paper.name, paper.id);
     }
 
