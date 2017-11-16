@@ -103,15 +103,13 @@ fn run() -> Result<()> {
 }
 
 fn run_citers_document(doc: &CitersDocument) -> Result<()> {
+    println!("The target paper:\n");
     let target_paper = doc.scrape_target_paper()?;
-    println!(
-        r#""{}" (id: {})" is cited by:"#,
-        target_paper.title,
-        target_paper.id
-    );
+    println!("{}\n", target_paper);
 
+    println!("... is cited by:\n");
     for paper in doc.scrape_papers()? {
-        println!(r#""{}" (id: {})"#, paper.title, paper.id);
+        println!("{}\n", paper);
     }
 
     Ok(())
@@ -119,7 +117,7 @@ fn run_citers_document(doc: &CitersDocument) -> Result<()> {
 
 fn run_search_document(doc: &SearchDocument) -> Result<()> {
     for paper in doc.scrape_papers()? {
-        println!(r#""{}" (id: {})"#, paper.title, paper.id);
+        println!("{}\n", paper);
     }
 
     Ok(())
