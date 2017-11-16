@@ -40,9 +40,13 @@ impl PapersDocument {
 
     fn scrape_paper_one(node: &Node) -> Result<Paper> {
         let title = Self::scrape_title(node);
-        let (id, _) = Self::scrape_id_and_citation(node)?;
+        let (id, c) = Self::scrape_id_and_citation(node)?;
 
-        Ok(Paper { title, id })
+        Ok(Paper {
+            title,
+            id,
+            citation_count: Some(c),
+        })
     }
 
     // There are (at least) two formats.
@@ -177,7 +181,11 @@ impl CitersDocument {
             parse_id_from_url(id_url)?.to_string()
         };
 
-        Ok(Paper { title, id })
+        Ok(Paper {
+            title,
+            id,
+            citation_count: None,
+        })
     }
 }
 
