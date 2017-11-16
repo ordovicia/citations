@@ -10,3 +10,7 @@ lazy_static = "0.2.9"
 regex = "0.2.2"
 reqwest = "0.8.1"
 select = "0.4.2"
+
+[[bin]]
+name = "scholar"
+doc = false

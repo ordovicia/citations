@@ -77,8 +77,6 @@ impl SearchQuery {
     /// use scholar::request::SearchQuery;
     ///
     /// let mut q = SearchQuery::default();
-    /// assert_eq!(q.get_count(), 1);
-    ///
     /// q.set_count(2);
     /// assert_eq!(q.get_count(), 2);
     /// ```

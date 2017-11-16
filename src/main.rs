@@ -2,23 +2,16 @@
 extern crate clap;
 #[macro_use]
 extern crate error_chain;
-#[macro_use]
-extern crate lazy_static;
-extern crate regex;
-extern crate reqwest;
-extern crate select;
+
+extern crate scholar;
 
 use std::fs;
 
-pub mod request;
-pub mod scrape;
-pub mod paper;
-pub mod errors;
-
 use clap::{App, Arg /* ArgGroup */};
 
-use scrape::{CitersDocument, SearchDocument};
-use errors::*;
+use scholar::errors::*;
+use scholar::request;
+use scholar::scrape::{CitersDocument, SearchDocument};
 
 quick_main!(run);
 
