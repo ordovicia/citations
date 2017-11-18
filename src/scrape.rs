@@ -1,7 +1,6 @@
 use std::io;
 use std::ops::Deref;
 
-use regex::Regex;
 use select::document::Document;
 use select::node::Node;
 use select::predicate::{Attr, Class, Name, Predicate, Text};
@@ -190,6 +189,8 @@ impl CitersDocument {
 }
 
 fn parse_id_from_url(url: &str) -> Result<&str> {
+    use regex::Regex;
+
     lazy_static! {
         static ref RE: Regex = Regex::new(r"(cluster|cites)=(\d+)").unwrap();
     }
@@ -200,6 +201,8 @@ fn parse_id_from_url(url: &str) -> Result<&str> {
 }
 
 fn parse_citation_count(text: &str) -> Result<u32> {
+    use regex::Regex;
+
     lazy_static! {
         static ref RE: Regex = Regex::new(r"[^\d]+(\d+)").unwrap();
     }

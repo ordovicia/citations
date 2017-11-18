@@ -7,7 +7,7 @@ extern crate scholar;
 
 use std::fs;
 
-use clap::{App, Arg /* ArgGroup */};
+use clap::{App, Arg, ArgGroup};
 
 use scholar::errors::*;
 use scholar::request;
@@ -50,11 +50,11 @@ fn run() -> Result<()> {
             .takes_value(true)
             .display_order(3)
             )
-        // .group(
-        //     ArgGroup::with_name("search")
-        //         .args(&["words", "phrase", "authors"])
-        //         .multiple(true),
-        // )
+        .group(
+            ArgGroup::with_name("search-query")
+                .args(&["words", "phrase", "authors"])
+                .multiple(true),
+        )
         .arg(
             Arg::with_name("search-html")
                 .long("search-html")
@@ -69,10 +69,10 @@ fn run() -> Result<()> {
                 .takes_value(true)
                 .display_order(11)
         )
-        // .group(ArgGroup::with_name("html").args(&["search-html", "cite-html"]))
+        .group(ArgGroup::with_name("html").args(&["search-html", "cite-html"]))
         // .group(
         //     ArgGroup::with_name("input")
-        //         .args(&["search", "html"])
+        //         .args(&["search-query", "html"])
         //         .required(true),
         // )
         .get_matches();
@@ -103,7 +103,7 @@ fn run() -> Result<()> {
                 query.set_authors(authors);
             }
 
-            let body = request::send_query(&query)?;
+            let body = request::send_request(&query)?;
             SearchDocument::from(&body as &str)
         };
 

@@ -8,7 +8,7 @@ pub trait Query {
     fn to_url(&self) -> Result<Url>;
 }
 
-pub fn send_query<Q: Query>(query: &Q) -> Result<String> {
+pub fn send_request<Q: Query>(query: &Q) -> Result<String> {
     use reqwest::header::UserAgent;
 
     const USER_AGENT: &str = "Mozilla/5.0 (X11; Linux x86_64; rv:57.0) Gecko/20100101 Firefox/57.0";
