@@ -1,12 +1,24 @@
-use std::cmp;
-
-use reqwest::{Client, Url};
-use reqwest::header::UserAgent;
+use reqwest::{self, Url};
 
 use errors::*;
 
+pub const URL_BASE: &str = "https://scholar.google.com/scholar";
+
 pub trait Query {
-    fn set_query(&self, url: &mut Url) -> Result<()>;
+    fn to_url(&self) -> Result<Url>;
+}
+
+pub fn send_query<Q: Query>(query: &Q) -> Result<String> {
+    use reqwest::header::UserAgent;
+
+    const USER_AGENT: &str = "Mozilla/5.0 (X11; Linux x86_64; rv:57.0) Gecko/20100101 Firefox/57.0";
+
+    let client = reqwest::Client::new();
+    let url = query.to_url()?;
+    let mut res = client.get(url).header(UserAgent::new(USER_AGENT)).send()?;
+
+    let body = res.text()?;
+    Ok(body)
 }
 
 const DEFAULT_COUNT: u32 = 5;
@@ -16,22 +28,17 @@ pub struct SearchQuery {
     words: Option<String>,
 }
 
-pub fn send_query<Q: Query>(query: &Q) -> Result<String> {
-    const URL_BASE: &str = "https://scholar.google.com/scholar";
-    const USER_AGENT: &str = "Mozilla/5.0 (X11; Linux x86_64; rv:57.0) Gecko/20100101 Firefox/57.0";
-
-    let mut url = Url::parse(URL_BASE).unwrap();
-    query.set_query(&mut url)?;
-
-    let client = Client::new();
-    let mut res = client.get(url).header(UserAgent::new(USER_AGENT)).send()?;
-
-    let body = res.text()?;
-    Ok(body)
+impl Default for SearchQuery {
+    fn default() -> Self {
+        SearchQuery {
+            count: DEFAULT_COUNT,
+            words: None,
+        }
+    }
 }
 
 impl Query for SearchQuery {
-    fn set_query(&self, url: &mut Url) -> Result<()> {
+    fn to_url(&self) -> Result<Url> {
         if !self.is_valid() {
             return Err(ErrorKind::InvalidQuery.into());
         }
@@ -45,6 +52,8 @@ impl Query for SearchQuery {
             }
         }
 
+        let mut url = Url::parse(URL_BASE).unwrap();
+
         // scholar?as_q=&as_epq=&as_oq=&as_eq=&as_occt=any&as_sauthors=albert%20einstein&as_publication=&as_ylo=&as_yhi=&as_vis=0&btnG=&hl=en&num=1&as_sdt=0%2C5",
 
         let query = format!(
@@ -55,16 +64,7 @@ impl Query for SearchQuery {
         );
         url.set_query(Some(&query));
 
-        Ok(())
-    }
-}
-
-impl Default for SearchQuery {
-    fn default() -> Self {
-        SearchQuery {
-            count: DEFAULT_COUNT,
-            words: None,
-        }
+        Ok(url)
     }
 }
 
@@ -81,6 +81,8 @@ impl SearchQuery {
     /// assert_eq!(q.get_count(), 2);
     /// ```
     pub fn set_count(&mut self, count: u32) {
+        use std::cmp;
+
         const MAX_PAGE_RESULTS: u32 = 10;
         self.count = cmp::min(count, MAX_PAGE_RESULTS);
     }
@@ -131,49 +133,39 @@ mod tests {
     use super::*;
 
     #[test]
-    fn search_query_set_query_count() {
+    fn search_query_to_url_count() {
         let mut q = SearchQuery::default();
-        let mut url = Url::parse("https://example.com").unwrap();
 
         const NEW_COUNT: u32 = DEFAULT_COUNT + 1;
         q.set_count(NEW_COUNT);
         q.set_words("foo");
-        q.set_query(&mut url).unwrap();
+
         assert_eq!(
-            url,
-            Url::parse(&format!("https://example.com/?num={}&q=foo", NEW_COUNT)).unwrap()
+            q.to_url().unwrap(),
+            Url::parse(&format!("{}?num={}&q=foo", URL_BASE, NEW_COUNT)).unwrap()
         );
     }
 
     #[test]
-    fn search_query_set_query_words() {
+    fn search_query_to_url_words() {
         let mut q = SearchQuery::default();
-        let mut url = Url::parse("https://example.com").unwrap();
 
         q.set_words("foo bar");
-        q.set_query(&mut url).unwrap();
+
         assert_eq!(
-            url,
-            Url::parse(&format!(
-                "https://example.com/?num={}&q=foo%20bar",
-                DEFAULT_COUNT
-            )).unwrap()
+            q.to_url().unwrap(),
+            Url::parse(&format!("{}?num={}&q=foo%20bar", URL_BASE, DEFAULT_COUNT)).unwrap()
         );
     }
 
     #[test]
-    fn search_query_set_query_phrase() {
+    fn search_query_to_url_phrase() {
         let mut q = SearchQuery::default();
-        let mut url = Url::parse("https://example.com").unwrap();
 
         q.set_phrase("foo bar");
-        q.set_query(&mut url).unwrap();
         assert_eq!(
-            url,
-            Url::parse(&format!(
-                "https://example.com/?num={}&q=\"foo bar\"",
-                DEFAULT_COUNT
-            )).unwrap()
+            q.to_url().unwrap(),
+            Url::parse(&format!("{}?num={}&q=\"foo bar\"", URL_BASE, DEFAULT_COUNT)).unwrap()
         );
     }
 

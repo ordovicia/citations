@@ -22,7 +22,7 @@ OPTIONS:
 ## Note
 
 **Do not abuse**.
-If you send request too frequently, Google Scholar blocks your access temporarily.
+If you send requests too frequently, Google Scholar will block your access temporarily.
 Currently, this program outputs nothing when blocked.
 
 ## Similar Projects
