@@ -75,10 +75,6 @@ impl Query for SearchQuery {
 }
 
 impl SearchQuery {
-    pub fn get_count(&self) -> u32 {
-        self.count
-    }
-
     /// ```
     /// use scholar::request::SearchQuery;
     ///
@@ -93,8 +89,23 @@ impl SearchQuery {
         self.count = cmp::min(count, MAX_PAGE_RESULTS);
     }
 
-    pub fn get_words(&self) -> &Option<String> {
-        &self.words
+    pub fn get_count(&self) -> u32 {
+        self.count
+    }
+
+    /// ```
+    /// use scholar::request::SearchQuery;
+    ///
+    /// let mut q = SearchQuery::default();
+    ///
+    /// q.set_words("foo");
+    /// assert_eq!(q.get_words(), &Some(String::from("foo")));
+    ///
+    /// q.set_words("bar");
+    /// assert_eq!(q.get_words(), &Some(String::from("bar")));
+    /// ```
+    pub fn set_words(&mut self, words: &str) {
+        self.words = Some(words.to_owned());
     }
 
     /// ```
@@ -103,13 +114,13 @@ impl SearchQuery {
     /// let mut q = SearchQuery::default();
     /// assert!(q.get_words().is_none());
     ///
-    /// q.set_words("foo");
+    /// q.append_words("foo");
     /// assert_eq!(q.get_words(), &Some(String::from("foo")));
     ///
-    /// q.set_words("bar");
+    /// q.append_words("bar");
     /// assert_eq!(q.get_words(), &Some(String::from("foo bar")));
     /// ```
-    pub fn set_words(&mut self, words: &str) {
+    pub fn append_words(&mut self, words: &str) {
         match self.words {
             Some(ref mut w) => {
                 w.push(' ');
@@ -121,20 +132,35 @@ impl SearchQuery {
         }
     }
 
+    pub fn get_words(&self) -> &Option<String> {
+        &self.words
+    }
+
     /// ```
     /// use scholar::request::SearchQuery;
     ///
     /// let mut q = SearchQuery::default();
     ///
     /// q.set_phrase("foo bar");
-    /// assert_eq!(q.get_words(), &Some(String::from("\"foo bar\"")));
+    /// assert_eq!(q.get_words(), &Some(String::from(r#""foo bar""#)));
     /// ```
     pub fn set_phrase(&mut self, phrase: &str) {
         self.set_words(&format!("\"{}\"", phrase));
     }
 
-    pub fn get_authors(&self) -> &Option<String> {
-        &self.authors
+    /// ```
+    /// use scholar::request::SearchQuery;
+    ///
+    /// let mut q = SearchQuery::default();
+    ///
+    /// q.append_phrase("foo bar");
+    /// assert_eq!(q.get_words(), &Some(String::from(r#""foo bar""#)));
+    ///
+    /// q.append_phrase("baz qux");
+    /// assert_eq!(q.get_words(), &Some(String::from(r#""foo bar" "baz qux""#)));
+    /// ```
+    pub fn append_phrase(&mut self, phrase: &str) {
+        self.append_words(&format!("\"{}\"", phrase));
     }
 
     /// ```
@@ -146,9 +172,24 @@ impl SearchQuery {
     /// assert_eq!(q.get_authors(), &Some(String::from("albert")));
     ///
     /// q.set_authors("einstein");
-    /// assert_eq!(q.get_authors(), &Some(String::from("albert einstein")));
+    /// assert_eq!(q.get_authors(), &Some(String::from("einstein")));
     /// ```
     pub fn set_authors(&mut self, authors: &str) {
+        self.authors = Some(authors.to_owned());
+    }
+
+    /// ```
+    /// use scholar::request::SearchQuery;
+    ///
+    /// let mut q = SearchQuery::default();
+    ///
+    /// q.append_authors("albert");
+    /// assert_eq!(q.get_authors(), &Some(String::from("albert")));
+    ///
+    /// q.append_authors("einstein");
+    /// assert_eq!(q.get_authors(), &Some(String::from("albert einstein")));
+    /// ```
+    pub fn append_authors(&mut self, authors: &str) {
         match self.authors {
             Some(ref mut a) => {
                 a.push(' ');
@@ -158,6 +199,10 @@ impl SearchQuery {
                 self.authors = Some(authors.to_owned());
             }
         }
+    }
+
+    pub fn get_authors(&self) -> &Option<String> {
+        &self.authors
     }
 
     fn is_valid(&self) -> bool {
@@ -192,7 +237,6 @@ mod tests {
         let mut q = SearchQuery::default();
 
         q.set_words("foo bar");
-
         assert_eq!(
             q.to_url().unwrap(),
             Url::parse(&format!(
@@ -211,7 +255,7 @@ mod tests {
         assert_eq!(
             q.to_url().unwrap(),
             Url::parse(&format!(
-                "{}?num={}&as_q=\"foo bar\"&as_sauthors=",
+                r#"{}?num={}&as_q="foo bar"&as_sauthors="#,
                 URL_BASE,
                 DEFAULT_COUNT
             )).unwrap()
@@ -220,10 +264,19 @@ mod tests {
 
     #[test]
     fn search_query_is_valid_pass() {
-        let mut q = SearchQuery::default();
+        {
+            let mut q = SearchQuery::default();
 
-        q.set_words("foo");
-        assert!(q.is_valid());
+            q.set_words("foo");
+            assert!(q.is_valid());
+        }
+
+        {
+            let mut q = SearchQuery::default();
+
+            q.set_authors("foo");
+            assert!(q.is_valid());
+        }
     }
 
     #[test]
