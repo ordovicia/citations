@@ -42,9 +42,17 @@ fn run() -> Result<()> {
                 .takes_value(true)
                 .display_order(2)
         )
+        .arg(
+            Arg::with_name("authors")
+            .short("a")
+            .long("authors")
+            .help("Search papers with these authors")
+            .takes_value(true)
+            .display_order(3)
+            )
         // .group(
         //     ArgGroup::with_name("search")
-        //         .args(&["words", "phrase"])
+        //         .args(&["words", "phrase", "authors"])
         //         .multiple(true),
         // )
         .arg(
@@ -52,14 +60,14 @@ fn run() -> Result<()> {
                 .long("search-html")
                 .help("HTML file of search results")
                 .takes_value(true)
-                .display_order(3)
+                .display_order(10)
         )
         .arg(
             Arg::with_name("cite-html")
                 .long("cite-html")
                 .help("HTML file of citers list")
                 .takes_value(true)
-                .display_order(4)
+                .display_order(11)
         )
         // .group(ArgGroup::with_name("html").args(&["search-html", "cite-html"]))
         // .group(
@@ -90,6 +98,9 @@ fn run() -> Result<()> {
             }
             if let Some(phrase) = matches.value_of("phrase") {
                 query.set_phrase(phrase);
+            }
+            if let Some(authors) = matches.value_of("authors") {
+                query.set_authors(authors);
             }
 
             let body = request::send_query(&query)?;

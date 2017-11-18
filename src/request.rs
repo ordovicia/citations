@@ -68,8 +68,6 @@ impl Query for SearchQuery {
         );
         url.set_query(Some(&query));
 
-        eprintln!("url: {:?}", url);
-
         Ok(url)
     }
 }
