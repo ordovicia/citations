@@ -26,6 +26,7 @@ const DEFAULT_COUNT: u32 = 5;
 pub struct SearchQuery {
     count: u32,
     words: Option<String>,
+    authors: Option<String>,
 }
 
 impl Default for SearchQuery {
@@ -33,6 +34,7 @@ impl Default for SearchQuery {
         SearchQuery {
             count: DEFAULT_COUNT,
             words: None,
+            authors: None,
         }
     }
 }
@@ -58,11 +60,15 @@ impl Query for SearchQuery {
 
         let query = format!(
             "num={}\
-             &q={}",
+             &as_q={}\
+             &as_sauthors={}",
             self.count,
-            option_stringify!(self.words)
+            option_stringify!(self.words),
+            option_stringify!(self.authors),
         );
         url.set_query(Some(&query));
+
+        eprintln!("url: {:?}", url);
 
         Ok(url)
     }
@@ -99,14 +105,18 @@ impl SearchQuery {
     ///
     /// q.set_words("foo");
     /// assert_eq!(q.get_words(), &Some(String::from("foo")));
+    ///
+    /// q.set_words("bar");
+    /// assert_eq!(q.get_words(), &Some(String::from("foo bar")));
     /// ```
     pub fn set_words(&mut self, words: &str) {
         match self.words {
             Some(ref mut w) => {
+                w.push(' ');
                 w.push_str(words);
             }
             None => {
-                self.words = Some(words.to_string());
+                self.words = Some(words.to_owned());
             }
         }
     }
@@ -123,8 +133,35 @@ impl SearchQuery {
         self.set_words(&format!("\"{}\"", phrase));
     }
 
+    pub fn get_authors(&self) -> &Option<String> {
+        &self.authors
+    }
+
+    /// ```
+    /// use scholar::request::SearchQuery;
+    ///
+    /// let mut q = SearchQuery::default();
+    ///
+    /// q.set_authors("albert");
+    /// assert_eq!(q.get_authors(), &Some(String::from("albert")));
+    ///
+    /// q.set_authors("einstein");
+    /// assert_eq!(q.get_authors(), &Some(String::from("albert einstein")));
+    /// ```
+    pub fn set_authors(&mut self, authors: &str) {
+        match self.authors {
+            Some(ref mut a) => {
+                a.push(' ');
+                a.push_str(authors);
+            }
+            None => {
+                self.authors = Some(authors.to_owned());
+            }
+        }
+    }
+
     fn is_valid(&self) -> bool {
-        self.words.is_some()
+        self.words.is_some() || self.authors.is_some()
     }
 }
 
@@ -142,7 +179,11 @@ mod tests {
 
         assert_eq!(
             q.to_url().unwrap(),
-            Url::parse(&format!("{}?num={}&q=foo", URL_BASE, NEW_COUNT)).unwrap()
+            Url::parse(&format!(
+                "{}?num={}&as_q=foo&as_sauthors=",
+                URL_BASE,
+                NEW_COUNT
+            )).unwrap()
         );
     }
 
@@ -154,7 +195,11 @@ mod tests {
 
         assert_eq!(
             q.to_url().unwrap(),
-            Url::parse(&format!("{}?num={}&q=foo%20bar", URL_BASE, DEFAULT_COUNT)).unwrap()
+            Url::parse(&format!(
+                "{}?num={}&as_q=foo%20bar&as_sauthors=",
+                URL_BASE,
+                DEFAULT_COUNT
+            )).unwrap()
         );
     }
 
@@ -165,7 +210,11 @@ mod tests {
         q.set_phrase("foo bar");
         assert_eq!(
             q.to_url().unwrap(),
-            Url::parse(&format!("{}?num={}&q=\"foo bar\"", URL_BASE, DEFAULT_COUNT)).unwrap()
+            Url::parse(&format!(
+                "{}?num={}&as_q=\"foo bar\"&as_sauthors=",
+                URL_BASE,
+                DEFAULT_COUNT
+            )).unwrap()
         );
     }
 
