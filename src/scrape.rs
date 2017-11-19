@@ -8,15 +8,14 @@ use select::predicate::{Attr, Class, Name, Predicate, Text};
 use paper::Paper;
 use errors::*;
 
-macro_rules! try_option_html {
+macro_rules! try_html {
     ($a: expr) => { $a.ok_or(ErrorKind::BadHtml)? }
 }
 
-pub struct PapersDocument(Document);
-pub struct SearchDocument(PapersDocument);
-pub struct CitersDocument(PapersDocument);
+pub struct SearchDocument(Document);
+pub struct CitersDocument(SearchDocument);
 
-impl Deref for PapersDocument {
+impl Deref for SearchDocument {
     type Target = Document;
 
     fn deref(&self) -> &Self::Target {
@@ -24,8 +23,33 @@ impl Deref for PapersDocument {
     }
 }
 
-impl PapersDocument {
+impl<'a> From<&'a str> for SearchDocument {
+    fn from(s: &str) -> Self {
+        let document = Document::from(s);
+        SearchDocument(document)
+    }
+}
+
+impl SearchDocument {
+    pub fn new(document: Document) -> Self {
+        SearchDocument(document)
+    }
+
+    pub fn from_read<R: io::Read>(readable: R) -> Result<Self> {
+        let document = Document::from_read(readable)?;
+        Ok(Self::new(document))
+    }
+
     pub fn scrape_papers(&self) -> Result<Vec<Paper>> {
+        // ```ignore
+        // <div id="gs_res_ccl_mid">
+        //   <div class="gs_ri">
+        //     paper
+        //   </div>
+        //   ...
+        // </div>
+        // ```
+
         let pos = Attr("id", "gs_res_ccl_mid").descendant(Class("gs_ri"));
         let nodes = self.find(pos);
 
@@ -48,30 +72,35 @@ impl PapersDocument {
         })
     }
 
-    // There are (at least) two formats.
-    //
-    // 1. Link to a paper or something:
-    //
-    // <h3 class="gs_rt">
-    //   <span>
-    //       something
-    //   </span>
-    //   <a href="http://paper.pdf">
-    //     Title of paper or something
-    //   </a>
-    // </h3>
-    //
-    // 'span' may not exists.
-    //
-    // 2. Not a link:
-    //
-    // <h3 class="gs_rt">
-    //   <span>
-    //       something
-    //   </span>
-    //   Title of paper or something
-    // </h3>
     fn scrape_title(node: &Node) -> String {
+        // There are (at least) two formats.
+        //
+        // 1. Link to a paper or something:
+        //
+        // ```ignore
+        // <h3 class="gs_rt">
+        //   <span>
+        //       something
+        //   </span>
+        //   <a href="http://paper.pdf">
+        //     Title of paper or something
+        //   </a>
+        // </h3>
+        // ```
+        //
+        // 'span' may not exists.
+        //
+        // 2. Not a link:
+        //
+        // ```ignore
+        // <h3 class="gs_rt">
+        //   <span>
+        //       something
+        //   </span>
+        //   Title of paper or something
+        // </h3>
+        // ```
+
         // 1. Link to a paper or something
         let pos = Class("gs_rt").child(Name("a"));
         if let Some(n) = node.find(pos).nth(0) {
@@ -91,17 +120,17 @@ impl PapersDocument {
     //
     // * cluster id, and
     // * citation count
-    //
-    // Format:
-    //
-    // <div class="gs_fl">
-    //   something
-    //   <a href="/scholar?cites=000000>Cited by 999</a>
-    //   something
-    // </div>
     fn scrape_id_and_citation(node: &Node) -> Result<(String, u32)> {
+        // Footer format:
+        //
+        // <div class="gs_fl">
+        //   (something)
+        //   <a href="/scholar?cites=000000>Cited by 999</a>
+        //   (something)
+        // </div>
+
         let pos = Class("gs_fl");
-        let footers = try_option_html!(node.find(pos).nth(0)).children();
+        let footers = try_html!(node.find(pos).nth(0)).children();
 
         let citation_node = footers
             .into_selection()
@@ -113,7 +142,7 @@ impl PapersDocument {
                 }
             })
             .first();
-        let citation_node = try_option_html!(citation_node);
+        let citation_node = try_html!(citation_node);
 
         let id = {
             let id_url = citation_node.attr("href").unwrap();
@@ -126,30 +155,8 @@ impl PapersDocument {
     }
 }
 
-impl Deref for SearchDocument {
-    type Target = PapersDocument;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<'a> From<&'a str> for SearchDocument {
-    fn from(s: &str) -> Self {
-        let document = Document::from(s);
-        SearchDocument(PapersDocument(document))
-    }
-}
-
-impl SearchDocument {
-    pub fn from_read<R: io::Read>(readable: R) -> Result<Self> {
-        let document = Document::from_read(readable)?;
-        Ok(SearchDocument(PapersDocument(document)))
-    }
-}
-
 impl Deref for CitersDocument {
-    type Target = PapersDocument;
+    type Target = SearchDocument;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -158,7 +165,7 @@ impl Deref for CitersDocument {
 
 impl CitersDocument {
     pub fn new(document: Document) -> Self {
-        CitersDocument(PapersDocument(document))
+        CitersDocument(SearchDocument::new(document))
     }
 
     pub fn from_read<R: io::Read>(readable: R) -> Result<Self> {
@@ -171,12 +178,12 @@ impl CitersDocument {
             let pos = Attr("id", "gs_rt_hdr")
                 .child(Name("h2"))
                 .child(Name("a").or(Text));
-            try_option_html!(self.find(pos).nth(0))
+            try_html!(self.find(pos).nth(0))
         };
 
         let title = node.text();
         let id = {
-            let id_url = try_option_html!(node.attr("href"));
+            let id_url = try_html!(node.attr("href"));
             parse_id_from_url(id_url)?.to_string()
         };
 
@@ -195,8 +202,8 @@ fn parse_id_from_url(url: &str) -> Result<&str> {
         static ref RE: Regex = Regex::new(r"(cluster|cites)=(\d+)").unwrap();
     }
 
-    let caps = try_option_html!(RE.captures(url));
-    let id = try_option_html!(caps.get(2));
+    let caps = try_html!(RE.captures(url));
+    let id = try_html!(caps.get(2));
     Ok(id.as_str())
 }
 
@@ -207,9 +214,9 @@ fn parse_citation_count(text: &str) -> Result<u32> {
         static ref RE: Regex = Regex::new(r"[^\d]+(\d+)").unwrap();
     }
 
-    let caps = try_option_html!(RE.captures(text));
+    let caps = try_html!(RE.captures(text));
     let count = {
-        let count = try_option_html!(caps.get(1));
+        let count = try_html!(caps.get(1));
         count.as_str().parse().unwrap()
     };
     Ok(count)
