@@ -5,11 +5,12 @@ Google Scholar scraper written in Rust.
 
 ```
 USAGE:
-    scholar [OPTIONS]
+    scholar [FLAGS] [OPTIONS]
 
 FLAGS:
-    -h, --help       Prints help information
-    -V, --version    Prints version information
+    -t, --title-only    Search only papers which contain specified words in their title
+    -h, --help          Prints help information
+    -V, --version       Prints version information
 
 OPTIONS:
     -c, --count <count>                Maximum number of results

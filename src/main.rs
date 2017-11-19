@@ -50,6 +50,13 @@ fn run() -> Result<()> {
             .takes_value(true)
             .display_order(3)
             )
+        .arg(
+            Arg::with_name("title-only")
+            .short("t")
+            .long("title-only")
+            .help("Search only papers which contain specified words in their title")
+            .display_order(4)
+            )
         .group(
             ArgGroup::with_name("search-query")
                 .args(&["words", "phrase", "authors"])
@@ -102,9 +109,12 @@ fn run() -> Result<()> {
             if let Some(authors) = matches.value_of("authors") {
                 query.set_authors(authors);
             }
+            if matches.is_present("title-only") {
+                query.set_title_only(true);
+            }
 
             let body = request::send_request(&query)?;
-            SearchDocument::from(&body as &str)
+            SearchDocument::from(&*body)
         };
 
         run_search_document(&search_doc)?;

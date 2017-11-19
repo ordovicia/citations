@@ -21,13 +21,14 @@ pub fn send_request<Q: Query>(query: &Q) -> Result<String> {
     Ok(body)
 }
 
-const DEFAULT_COUNT: u32 = 5;
-
 pub struct SearchQuery {
     count: u32,
     words: Option<String>,
     authors: Option<String>,
+    title_only: bool,
 }
+
+const DEFAULT_COUNT: u32 = 5;
 
 impl Default for SearchQuery {
     fn default() -> Self {
@@ -35,6 +36,7 @@ impl Default for SearchQuery {
             count: DEFAULT_COUNT,
             words: None,
             authors: None,
+            title_only: false,
         }
     }
 }
@@ -56,15 +58,24 @@ impl Query for SearchQuery {
 
         let mut url = Url::parse(URL_BASE).unwrap();
 
-        // scholar?as_q=&as_epq=&as_oq=&as_eq=&as_occt=any&as_sauthors=albert%20einstein&as_publication=&as_ylo=&as_yhi=&as_vis=0&btnG=&hl=en&num=1&as_sdt=0%2C5",
-
         let query = format!(
-            "num={}\
-             &as_q={}\
-             &as_sauthors={}",
-            self.count,
+            "as_q={}\
+             &as_epq=\
+             &as_eq=\
+             &as_occt={}\
+             &as_sauthors={}\
+             &as_publication=\
+             &as_ylo=\
+             &as_yhi=\
+             &as_vis=0\
+             &btnG=\
+             &hl=en\
+             &num={}\
+             &as_sdt=0%2C5",
             option_stringify!(self.words),
+            if self.title_only { "title" } else { "any" },
             option_stringify!(self.authors),
+            self.count,
         );
         url.set_query(Some(&query));
 
@@ -203,6 +214,27 @@ impl SearchQuery {
         &self.authors
     }
 
+    /// ```
+    /// use scholar::request::SearchQuery;
+    ///
+    /// let mut q = SearchQuery::default();
+    ///
+    /// assert_eq!(q.get_title_only(), false);
+    ///
+    /// q.set_title_only(true);
+    /// assert_eq!(q.get_title_only(), true);
+    ///
+    /// q.set_title_only(false);
+    /// assert_eq!(q.get_title_only(), false);
+    /// ```
+    pub fn set_title_only(&mut self, title_only: bool) {
+        self.title_only = title_only;
+    }
+
+    pub fn get_title_only(&self) -> bool {
+        self.title_only
+    }
+
     fn is_valid(&self) -> bool {
         self.words.is_some() || self.authors.is_some()
     }
@@ -213,49 +245,34 @@ mod tests {
     use super::*;
 
     #[test]
-    fn search_query_to_url_count() {
+    fn search_query_to_url() {
         let mut q = SearchQuery::default();
 
         const NEW_COUNT: u32 = DEFAULT_COUNT + 1;
         q.set_count(NEW_COUNT);
-        q.set_words("foo");
+        q.set_phrase("quantum theory");
+        q.set_authors("albert einstein");
+        q.set_title_only(true);
 
         assert_eq!(
             q.to_url().unwrap(),
             Url::parse(&format!(
-                "{}?num={}&as_q=foo&as_sauthors=",
+                "{}?\
+                 as_q=\"quantum theory\"\
+                 &as_epq=\
+                 &as_eq=\
+                 &as_occt=title\
+                 &as_sauthors=albert%20einstein\
+                 &as_publication=\
+                 &as_ylo=\
+                 &as_yhi=\
+                 &as_vis=0\
+                 &btnG=\
+                 &hl=en\
+                 &num={}\
+                 &as_sdt=0%2C5",
                 URL_BASE,
                 NEW_COUNT
-            )).unwrap()
-        );
-    }
-
-    #[test]
-    fn search_query_to_url_words() {
-        let mut q = SearchQuery::default();
-
-        q.set_words("foo bar");
-        assert_eq!(
-            q.to_url().unwrap(),
-            Url::parse(&format!(
-                "{}?num={}&as_q=foo%20bar&as_sauthors=",
-                URL_BASE,
-                DEFAULT_COUNT
-            )).unwrap()
-        );
-    }
-
-    #[test]
-    fn search_query_to_url_phrase() {
-        let mut q = SearchQuery::default();
-
-        q.set_phrase("foo bar");
-        assert_eq!(
-            q.to_url().unwrap(),
-            Url::parse(&format!(
-                r#"{}?num={}&as_q="foo bar"&as_sauthors="#,
-                URL_BASE,
-                DEFAULT_COUNT
             )).unwrap()
         );
     }
