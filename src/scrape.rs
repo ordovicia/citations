@@ -120,7 +120,7 @@ impl SearchDocument {
     //
     // * cluster id, and
     // * citation count
-    fn scrape_id_and_citation(node: &Node) -> Result<(String, u32)> {
+    fn scrape_id_and_citation(node: &Node) -> Result<(u64, u32)> {
         // Footer format:
         //
         // <div class="gs_fl">
@@ -146,7 +146,7 @@ impl SearchDocument {
 
         let id = {
             let id_url = citation_node.attr("href").unwrap();
-            parse_id_from_url(id_url).unwrap().to_string()
+            parse_id_from_url(id_url).unwrap()
         };
 
         let citation_count = parse_citation_count(&citation_node.text())?;
@@ -184,7 +184,7 @@ impl CitationDocument {
         let title = node.text();
         let id = {
             let id_url = try_html!(node.attr("href"));
-            parse_id_from_url(id_url)?.to_string()
+            parse_id_from_url(id_url)?
         };
 
         Ok(Paper {
@@ -195,7 +195,7 @@ impl CitationDocument {
     }
 }
 
-fn parse_id_from_url(url: &str) -> Result<&str> {
+fn parse_id_from_url(url: &str) -> Result<u64> {
     use regex::Regex;
 
     lazy_static! {
@@ -203,8 +203,12 @@ fn parse_id_from_url(url: &str) -> Result<&str> {
     }
 
     let caps = try_html!(RE.captures(url));
-    let id = try_html!(caps.get(2));
-    Ok(id.as_str())
+    let id = {
+        let id = try_html!(caps.get(2));
+        id.as_str().parse()?
+    };
+
+    Ok(id)
 }
 
 fn parse_citation_count(text: &str) -> Result<u32> {
@@ -219,6 +223,7 @@ fn parse_citation_count(text: &str) -> Result<u32> {
         let count = try_html!(caps.get(1));
         count.as_str().parse().unwrap()
     };
+
     Ok(count)
 }
 
@@ -228,14 +233,11 @@ mod tests {
 
     #[test]
     fn parse_id_from_url_pass() {
-        assert_eq!(parse_id_from_url("cluster=000000").unwrap(), "000000");
-        assert_eq!(
-            parse_id_from_url("scholar?cluster=111111").unwrap(),
-            "111111"
-        );
+        assert_eq!(parse_id_from_url("cluster=123456").unwrap(), 123456);
+        assert_eq!(parse_id_from_url("scholar?cluster=654321").unwrap(), 654321);
         assert_eq!(
             parse_id_from_url("scholar?cluster=222222&foo=bar").unwrap(),
-            "222222"
+            222222
         );
     }
 
@@ -273,16 +275,17 @@ mod tests {
             papers[0],
             Paper {
                 title: String::from("Quantum field theory and critical phenomena"),
-                id: String::from("16499695044466828447"),
+                id: 16499695044466828447,
                 citation_count: Some(4821),
             }
         );
 
+        // TODO Issue #8
         // assert_eq!(
         //     papers[1],
         //     Paper {
         //         title: String::from("Quantum theory of solids"),
-        //         id: String::from("8552492368061991976"),
+        //         id: 8552492368061991976,
         //         citation_count: Some(4190),
         //     }
         // );
@@ -293,7 +296,7 @@ mod tests {
                 title: String::from(
                     "Significance of electromagnetic potentials in the quantum theory"
                 ),
-                id: String::from("5545735591029960915"),
+                id: 5545735591029960915,
                 citation_count: Some(6961),
             }
         );
@@ -317,7 +320,7 @@ mod tests {
                 title: String::from(
                     "Significance of electromagnetic potentials in the quantum theory"
                 ),
-                id: String::from("5545735591029960915"),
+                id: 5545735591029960915,
                 citation_count: None,
             }
         );
@@ -328,7 +331,7 @@ mod tests {
             citer_papers[0],
             Paper {
                 title: String::from("Quantal phase factors accompanying adiabatic changes"),
-                id: String::from("15570691018430890829"),
+                id: 15570691018430890829,
                 citation_count: Some(7813),
             }
         );
@@ -337,7 +340,7 @@ mod tests {
             citer_papers[1],
             Paper {
                 title: String::from("Multiferroics: a magnetic twist for ferroelectricity"),
-                id: String::from("9328505180409005573"),
+                id: 9328505180409005573,
                 citation_count: Some(3232),
             }
         );
@@ -346,7 +349,7 @@ mod tests {
             citer_papers[2],
             Paper {
                 title: String::from("Quantum field theory"),
-                id: String::from("14398189842493937255"),
+                id: 14398189842493937255,
                 citation_count: Some(2911),
             }
         );

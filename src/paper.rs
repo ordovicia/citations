@@ -4,7 +4,7 @@ use std::borrow::Cow;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Paper {
     pub title: String,
-    pub id: String,
+    pub id: u64,
     pub citation_count: Option<u32>,
 }
 
