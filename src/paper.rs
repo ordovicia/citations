@@ -1,7 +1,7 @@
 use std::fmt;
 use std::borrow::Cow;
 
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Paper {
     pub title: String,
     pub id: String,

@@ -13,7 +13,7 @@ macro_rules! try_html {
 }
 
 pub struct SearchDocument(Document);
-pub struct CitersDocument(SearchDocument);
+pub struct CitationDocument(SearchDocument);
 
 impl Deref for SearchDocument {
     type Target = Document;
@@ -155,7 +155,7 @@ impl SearchDocument {
     }
 }
 
-impl Deref for CitersDocument {
+impl Deref for CitationDocument {
     type Target = SearchDocument;
 
     fn deref(&self) -> &Self::Target {
@@ -163,9 +163,9 @@ impl Deref for CitersDocument {
     }
 }
 
-impl CitersDocument {
+impl CitationDocument {
     pub fn new(document: Document) -> Self {
-        CitersDocument(SearchDocument::new(document))
+        CitationDocument(SearchDocument::new(document))
     }
 
     pub fn from_read<R: io::Read>(readable: R) -> Result<Self> {
@@ -255,5 +255,100 @@ mod tests {
     #[test]
     fn parse_citation_count_fail() {
         assert!(parse_citation_count("foo").is_err());
+    }
+
+    #[test]
+    fn search_document_scrape_test() {
+        use std::fs;
+
+        let papers = {
+            let file = fs::File::open("src/test_html/quantum_theory.html").unwrap();
+            let doc = SearchDocument::from_read(file).unwrap();
+            doc.scrape_papers().unwrap()
+        };
+
+        assert_eq!(papers.len(), 10);
+
+        assert_eq!(
+            papers[0],
+            Paper {
+                title: String::from("Quantum field theory and critical phenomena"),
+                id: String::from("16499695044466828447"),
+                citation_count: Some(4821),
+            }
+        );
+
+        // assert_eq!(
+        //     papers[1],
+        //     Paper {
+        //         title: String::from("Quantum theory of solids"),
+        //         id: String::from("8552492368061991976"),
+        //         citation_count: Some(4190),
+        //     }
+        // );
+
+        assert_eq!(
+            papers[2],
+            Paper {
+                title: String::from(
+                    "Significance of electromagnetic potentials in the quantum theory"
+                ),
+                id: String::from("5545735591029960915"),
+                citation_count: Some(6961),
+            }
+        );
+    }
+
+    #[test]
+    fn citation_document_scrape_test() {
+        use std::fs;
+
+        let doc = {
+            let file = fs::File::open("src/test_html/quantum_theory_citations.html").unwrap();
+            CitationDocument::from_read(file).unwrap()
+        };
+
+        let target_paper = doc.scrape_target_paper().unwrap();
+        let citer_papers = doc.scrape_papers().unwrap();
+
+        assert_eq!(
+            target_paper,
+            Paper {
+                title: String::from(
+                    "Significance of electromagnetic potentials in the quantum theory"
+                ),
+                id: String::from("5545735591029960915"),
+                citation_count: None,
+            }
+        );
+
+        assert_eq!(citer_papers.len(), 10);
+
+        assert_eq!(
+            citer_papers[0],
+            Paper {
+                title: String::from("Quantal phase factors accompanying adiabatic changes"),
+                id: String::from("15570691018430890829"),
+                citation_count: Some(7813),
+            }
+        );
+
+        assert_eq!(
+            citer_papers[1],
+            Paper {
+                title: String::from("Multiferroics: a magnetic twist for ferroelectricity"),
+                id: String::from("9328505180409005573"),
+                citation_count: Some(3232),
+            }
+        );
+
+        assert_eq!(
+            citer_papers[2],
+            Paper {
+                title: String::from("Quantum field theory"),
+                id: String::from("14398189842493937255"),
+                citation_count: Some(2911),
+            }
+        );
     }
 }

@@ -11,7 +11,7 @@ use clap::{App, Arg, ArgGroup};
 
 use scholar::errors::*;
 use scholar::request;
-use scholar::scrape::{CitersDocument, SearchDocument};
+use scholar::scrape::{CitationDocument, SearchDocument};
 
 quick_main!(run);
 
@@ -84,11 +84,11 @@ fn run() -> Result<()> {
         // )
         .get_matches();
 
-    if let Some(citers_file) = matches.value_of("cite-html") {
-        let file = fs::File::open(citers_file)?;
-        let doc = CitersDocument::from_read(file)?;
+    if let Some(cite_file) = matches.value_of("cite-html") {
+        let file = fs::File::open(cite_file)?;
+        let doc = CitationDocument::from_read(file)?;
 
-        run_citers_document(&doc)?;
+        run_citation_document(&doc)?;
     } else {
         let search_doc = if let Some(search_file) = matches.value_of("search-html") {
             let file = fs::File::open(search_file)?;
@@ -123,7 +123,7 @@ fn run() -> Result<()> {
     Ok(())
 }
 
-fn run_citers_document(doc: &CitersDocument) -> Result<()> {
+fn run_citation_document(doc: &CitationDocument) -> Result<()> {
     println!("The target paper:\n");
     let target_paper = doc.scrape_target_paper()?;
     println!("{}\n", target_paper);
