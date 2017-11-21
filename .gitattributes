@@ -1,0 +1,2 @@
+/src/test_html/*.html -diff
+/src/test_html/*.html linguist-vendored
