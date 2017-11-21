@@ -23,8 +23,9 @@ OPTIONS:
 
 ## Note
 
-**Do not abuse**.
 If you send requests too frequently, Google Scholar will block your access temporarily.
+I would not offer any workaround for this situation.
+
 Currently, this program outputs nothing when blocked.
 
 ## Similar Projects
