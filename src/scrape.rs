@@ -69,6 +69,7 @@ impl SearchDocument {
             title,
             id,
             citation_count: Some(c),
+            citers: None,
         })
     }
 
@@ -191,6 +192,17 @@ impl CitationDocument {
             title,
             id,
             citation_count: None,
+            citers: None,
+        })
+    }
+
+    pub fn scrape_target_paper_with_citers(&self) -> Result<Paper> {
+        let target_paper = self.scrape_target_paper()?;
+        let citers = self.scrape_papers()?;
+
+        Ok(Paper {
+            citers: Some(citers),
+            ..target_paper
         })
     }
 }
@@ -277,6 +289,7 @@ mod tests {
                 title: String::from("Quantum field theory and critical phenomena"),
                 id: 16499695044466828447,
                 citation_count: Some(4821),
+                citers: None,
             }
         );
 
@@ -287,6 +300,7 @@ mod tests {
         //         title: String::from("Quantum theory of solids"),
         //         id: 8552492368061991976,
         //         citation_count: Some(4190),
+        //         citers: None,
         //     }
         // );
 
@@ -298,6 +312,7 @@ mod tests {
                 ),
                 id: 5545735591029960915,
                 citation_count: Some(6961),
+                citers: None,
             }
         );
     }
@@ -322,6 +337,7 @@ mod tests {
                 ),
                 id: 5545735591029960915,
                 citation_count: None,
+                citers: None,
             }
         );
 
@@ -333,6 +349,7 @@ mod tests {
                 title: String::from("Quantal phase factors accompanying adiabatic changes"),
                 id: 15570691018430890829,
                 citation_count: Some(7813),
+                citers: None,
             }
         );
 
@@ -342,6 +359,7 @@ mod tests {
                 title: String::from("Multiferroics: a magnetic twist for ferroelectricity"),
                 id: 9328505180409005573,
                 citation_count: Some(3232),
+                citers: None,
             }
         );
 
@@ -351,6 +369,7 @@ mod tests {
                 title: String::from("Quantum field theory"),
                 id: 14398189842493937255,
                 citation_count: Some(2911),
+                citers: None,
             }
         );
     }

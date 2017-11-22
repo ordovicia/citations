@@ -1,8 +1,8 @@
 error_chain!{
     foreign_links {
-        Parse(::std::num::ParseIntError);
         Io(::std::io::Error);
         Reqwest(::reqwest::Error);
+        Parse(::std::num::ParseIntError);
     }
 
     errors {

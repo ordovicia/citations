@@ -7,6 +7,9 @@ extern crate lazy_static;
 extern crate regex;
 extern crate reqwest;
 extern crate select;
+extern crate serde;
+#[macro_use]
+extern crate serde_derive;
 
 /// `Error`-related structs defined with `error-chain`.
 pub mod errors;

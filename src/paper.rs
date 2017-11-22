@@ -1,11 +1,12 @@
 use std::fmt;
 use std::borrow::Cow;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct Paper {
     pub title: String,
     pub id: u64,
     pub citation_count: Option<u32>,
+    pub citers: Option<Vec<Paper>>,
 }
 
 impl fmt::Display for Paper {
@@ -14,7 +15,7 @@ impl fmt::Display for Paper {
             f,
             r#""{}"
     Cluster ID: {}
-Citation Count: {}"#,
+Citation count: {}"#,
             self.title,
             self.id,
             citation_count_to_cow(self.citation_count)

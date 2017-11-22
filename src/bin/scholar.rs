@@ -2,6 +2,7 @@
 extern crate clap;
 #[macro_use]
 extern crate error_chain;
+extern crate serde_json;
 
 extern crate scholar;
 
@@ -9,9 +10,14 @@ use std::fs;
 
 use clap::{App, Arg, ArgGroup};
 
-use scholar::errors::*;
 use scholar::request;
 use scholar::scrape::{CitationDocument, SearchDocument};
+
+mod config;
+mod errors;
+
+use config::*;
+use errors::*;
 
 quick_main!(run);
 
@@ -82,13 +88,25 @@ fn run() -> Result<()> {
         //         .args(&["search-query", "html"])
         //         .required(true),
         // )
+        .arg(
+            Arg::with_name("json")
+            .long("json")
+            .help("Output in JSON format")
+            .display_order(20)
+            )
         .get_matches();
+
+    let mut cfg = Config::default();
+
+    if matches.is_present("json") {
+        cfg.output_format = OutputFormat::Json;
+    }
 
     if let Some(cite_file) = matches.value_of("cite-html") {
         let file = fs::File::open(cite_file)?;
         let doc = CitationDocument::from_read(file)?;
 
-        run_citation_document(&doc)?;
+        run_citation_document(&doc, &cfg)?;
     } else {
         let search_doc = if let Some(search_file) = matches.value_of("search-html") {
             let file = fs::File::open(search_file)?;
@@ -117,28 +135,46 @@ fn run() -> Result<()> {
             SearchDocument::from(&*body)
         };
 
-        run_search_document(&search_doc)?;
+        run_search_document(&search_doc, &cfg)?;
     }
 
     Ok(())
 }
 
-fn run_citation_document(doc: &CitationDocument) -> Result<()> {
-    println!("The target paper:\n");
-    let target_paper = doc.scrape_target_paper()?;
-    println!("{}\n", target_paper);
+fn run_citation_document(doc: &CitationDocument, cfg: &Config) -> Result<()> {
+    let target_paper = doc.scrape_target_paper_with_citers()?;
 
-    println!("... is cited by:\n");
-    for paper in doc.scrape_papers()? {
-        println!("{}\n", paper);
+    match cfg.output_format {
+        OutputFormat::HumanReadable => {
+            println!("The target paper:\n");
+            println!("{}\n", target_paper);
+
+            println!("... is cited by:\n");
+            for citer in target_paper.citers.unwrap() {
+                println!("{}\n", citer);
+            }
+        }
+        OutputFormat::Json => {
+            let j = serde_json::to_string_pretty(&target_paper)?;
+            println!("{}", j);
+        }
     }
 
     Ok(())
 }
 
-fn run_search_document(doc: &SearchDocument) -> Result<()> {
-    for paper in doc.scrape_papers()? {
-        println!("{}\n", paper);
+fn run_search_document(doc: &SearchDocument, cfg: &Config) -> Result<()> {
+    match cfg.output_format {
+        OutputFormat::HumanReadable => {
+            println!("Search result:\n");
+            for paper in doc.scrape_papers()? {
+                println!("{}\n", paper);
+            }
+        }
+        OutputFormat::Json => for paper in doc.scrape_papers()? {
+            let j = serde_json::to_string_pretty(&paper)?;
+            println!("{}", j);
+        },
     }
 
     Ok(())
