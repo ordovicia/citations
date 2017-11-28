@@ -41,14 +41,12 @@ impl SearchDocument {
     }
 
     pub fn scrape_papers(&self) -> Result<Vec<Paper>> {
-        // ```ignore
         // <div id="gs_res_ccl_mid">
         //   <div class="gs_ri">
         //     paper
         //   </div>
         //   ...
         // </div>
-        // ```
 
         let pos = Attr("id", "gs_res_ccl_mid").descendant(Class("gs_ri"));
         let nodes = self.find(pos);
@@ -78,7 +76,6 @@ impl SearchDocument {
         //
         // 1. Link to a paper or something:
         //
-        // ```ignore
         // <h3 class="gs_rt">
         //   <span>
         //       something
@@ -87,20 +84,17 @@ impl SearchDocument {
         //     Title of paper or something
         //   </a>
         // </h3>
-        // ```
         //
         // 'span' may not exists.
         //
         // 2. Not a link:
         //
-        // ```ignore
         // <h3 class="gs_rt">
         //   <span>
         //       something
         //   </span>
         //   Title of paper or something
         // </h3>
-        // ```
 
         // 1. Link to a paper or something
         let pos = Class("gs_rt").child(Name("a"));
@@ -109,12 +103,21 @@ impl SearchDocument {
         }
 
         // 2. Not a link
-        let pos = Class("gs_rt").child(Text);
-        node.find(pos)
+        let children = node.find(Class("gs_rt")).into_selection().children();
+        let text_nodes = children.filter(|n: &Node| {
+            if let Some(name) = n.name() {
+                name != "span"
+            } else {
+                true
+            }
+        });
+        let concated_text = text_nodes
+            .into_iter()
             .map(|n| n.text())
             .collect::<String>()
             .trim()
-            .to_string()
+            .to_string();
+        concated_text
     }
 
     // Scrape article footer for
@@ -293,16 +296,15 @@ mod tests {
             }
         );
 
-        // TODO Issue #8
-        // assert_eq!(
-        //     papers[1],
-        //     Paper {
-        //         title: String::from("Quantum theory of solids"),
-        //         id: 8552492368061991976,
-        //         citation_count: Some(4190),
-        //         citers: None,
-        //     }
-        // );
+        assert_eq!(
+            papers[1],
+            Paper {
+                title: String::from("Quantum theory of solids"),
+                id: 8552492368061991976,
+                citation_count: Some(4190),
+                citers: None,
+            }
+        );
 
         assert_eq!(
             papers[2],

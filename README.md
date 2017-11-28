@@ -1,5 +1,4 @@
-scholar [![Build Status](https://travis-ci.org/ordovicia/scholar.svg?branch=master)](https://travis-ci.org/ordovicia/scholar)
-=======
+# scholar [![Build Status](https://travis-ci.org/ordovicia/scholar.svg?branch=master)](https://travis-ci.org/ordovicia/scholar)
 
 Google Scholar scraper written in Rust.
 
@@ -29,6 +28,6 @@ I will not offer any workaround for this situation.
 
 Currently, this program outputs nothing when blocked.
 
-## Similar Projects
+## Related Projects
 
 * Inspired by [ckreibich/scholar.py](https://github.com/ckreibich/scholar.py)
