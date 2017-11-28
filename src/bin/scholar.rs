@@ -22,15 +22,15 @@ use errors::*;
 quick_main!(run);
 
 fn run() -> Result<()> {
-    let matches = App::new(env!("CARGO_PKG_NAME"))
+    let mut app = App::new(env!("CARGO_PKG_NAME"))
         .version(crate_version!())
         .arg(
             Arg::with_name("count")
                 .short("c")
                 .long("count")
-                .help("Maximum number of results")
+                .help("Maximum number of search results")
                 .takes_value(true)
-                .display_order(0)
+                .display_order(0),
         )
         .arg(
             Arg::with_name("words")
@@ -38,7 +38,7 @@ fn run() -> Result<()> {
                 .long("words")
                 .help("Search papers with these words")
                 .takes_value(true)
-                .display_order(1)
+                .display_order(1),
         )
         .arg(
             Arg::with_name("phrase")
@@ -46,55 +46,62 @@ fn run() -> Result<()> {
                 .long("phrase")
                 .help("Search papers with this exact phrase")
                 .takes_value(true)
-                .display_order(2)
+                .display_order(2),
         )
         .arg(
             Arg::with_name("authors")
-            .short("a")
-            .long("authors")
-            .help("Search papers with these authors")
-            .takes_value(true)
-            .display_order(3)
-            )
+                .short("a")
+                .long("authors")
+                .help("Search papers with these authors")
+                .takes_value(true)
+                .display_order(3),
+        )
         .arg(
             Arg::with_name("title-only")
-            .short("t")
-            .long("title-only")
-            .help("Search only papers which contain specified words in their title")
-            .display_order(4)
-            )
+                .short("t")
+                .long("title-only")
+                .help("Search only papers which contain specified words in their title")
+                .display_order(4),
+        )
         .group(
             ArgGroup::with_name("search-query")
                 .args(&["words", "phrase", "authors"])
-                .multiple(true),
+                .multiple(true)
+                .conflicts_with("html"),
         )
         .arg(
             Arg::with_name("search-html")
                 .long("search-html")
-                .help("HTML file of search results")
-                .takes_value(true)
-                .display_order(10)
+                .help(
+                    "Scrape this HTML file as search results (possibly useful only when debugging)",
+                )
+                .value_name("file")
+                .display_order(10),
         )
         .arg(
             Arg::with_name("cite-html")
                 .long("cite-html")
-                .help("HTML file of citers list")
-                .takes_value(true)
-                .display_order(11)
+                .help("Scrape this HTML file as citers list (possibly useful only when debugging)")
+                .value_name("file")
+                .display_order(11),
         )
         .group(ArgGroup::with_name("html").args(&["search-html", "cite-html"]))
-        // .group(
-        //     ArgGroup::with_name("input")
-        //         .args(&["search-query", "html"])
-        //         .required(true),
-        // )
         .arg(
             Arg::with_name("json")
-            .long("json")
-            .help("Output in JSON format")
-            .display_order(20)
-            )
-        .get_matches();
+                .long("json")
+                .help("Output in JSON format")
+                .display_order(20),
+        );
+
+    let matches = app.clone().get_matches();
+
+    if !(matches.is_present("search-query") || matches.is_present("html")) {
+        use clap::{Error, ErrorKind};
+
+        app.print_help()?;
+        println!("\n");
+        Error::with_description("Missing query", ErrorKind::MissingRequiredArgument).exit();
+    }
 
     let mut cfg = Config::default();
 

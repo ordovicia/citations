@@ -13,12 +13,12 @@ FLAGS:
     -V, --version       Prints version information
 
 OPTIONS:
-    -c, --count <count>                Maximum number of results
-    -w, --words <words>                Search papers with these words
-    -p, --phrase <phrase>              Search papers with this exact phrase
-    -a, --authors <authors>            Search papers with these authors
-        --search-html <search-html>    HTML file of search results
-        --cite-html <cite-html>        HTML file of citers list
+    -c, --count <count>         Maximum number of search results
+    -w, --words <words>         Search papers with these words
+    -p, --phrase <phrase>       Search papers with this exact phrase
+    -a, --authors <authors>     Search papers with these authors
+        --search-html <file>    Scrape this HTML file as search results (possibly useful only when debugging)
+        --cite-html <file>      Scrape this HTML file as citers list (possibly useful only when debugging)
 ```
 
 ## Note
