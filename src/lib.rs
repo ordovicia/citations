@@ -22,3 +22,5 @@ pub mod request;
 
 /// Scrape HTML document to get information of papers.
 pub mod scrape;
+
+const SCHOLAR_URL_BASE: &str = "https://scholar.google.com/scholar";

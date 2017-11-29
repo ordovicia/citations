@@ -1,8 +1,7 @@
 use reqwest::{self, Url};
 
+use super::SCHOLAR_URL_BASE;
 use errors::*;
-
-pub const URL_BASE: &str = "https://scholar.google.com/scholar";
 
 pub trait Query {
     fn to_url(&self) -> Result<Url>;
@@ -56,7 +55,7 @@ impl Query for SearchQuery {
             }
         }
 
-        let mut url = Url::parse(URL_BASE).unwrap();
+        let mut url = Url::parse(SCHOLAR_URL_BASE).unwrap();
 
         let query = format!(
             "as_q={}\
@@ -271,7 +270,7 @@ mod tests {
                  &hl=en\
                  &num={}\
                  &as_sdt=0%2C5",
-                URL_BASE,
+                SCHOLAR_URL_BASE,
                 NEW_COUNT
             )).unwrap()
         );

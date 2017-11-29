@@ -63,12 +63,9 @@ impl SearchDocument {
         let title = Self::scrape_title(node);
         let (id, c) = Self::scrape_id_and_citation(node)?;
 
-        Ok(Paper {
-            title,
-            id,
-            citation_count: Some(c),
-            citers: None,
-        })
+        let mut paper = Paper::new(&title, id);
+        paper.citation_count = Some(c);
+        Ok(paper)
     }
 
     fn scrape_title(node: &Node) -> String {
@@ -191,22 +188,16 @@ impl CitationDocument {
             parse_id_from_url(id_url)?
         };
 
-        Ok(Paper {
-            title,
-            id,
-            citation_count: None,
-            citers: None,
-        })
+        Ok(Paper::new(&title, id))
     }
 
     pub fn scrape_target_paper_with_citers(&self) -> Result<Paper> {
         let target_paper = self.scrape_target_paper()?;
         let citers = self.scrape_papers()?;
 
-        Ok(Paper {
-            citers: Some(citers),
-            ..target_paper
-        })
+        let mut paper = target_paper;
+        paper.citers = Some(citers);
+        Ok(paper)
     }
 }
 
@@ -286,37 +277,29 @@ mod tests {
 
         assert_eq!(papers.len(), 10);
 
-        assert_eq!(
-            papers[0],
-            Paper {
-                title: String::from("Quantum field theory and critical phenomena"),
-                id: 16499695044466828447,
-                citation_count: Some(4821),
-                citers: None,
-            }
-        );
+        assert_eq!(papers[0], {
+            let mut paper = Paper::new(
+                "Quantum field theory and critical phenomena",
+                16499695044466828447,
+            );
+            paper.citation_count = Some(4821);
+            paper
+        });
 
-        assert_eq!(
-            papers[1],
-            Paper {
-                title: String::from("Quantum theory of solids"),
-                id: 8552492368061991976,
-                citation_count: Some(4190),
-                citers: None,
-            }
-        );
+        assert_eq!(papers[1], {
+            let mut paper = Paper::new("Quantum theory of solids", 8552492368061991976);
+            paper.citation_count = Some(4190);
+            paper
+        });
 
-        assert_eq!(
-            papers[2],
-            Paper {
-                title: String::from(
-                    "Significance of electromagnetic potentials in the quantum theory"
-                ),
-                id: 5545735591029960915,
-                citation_count: Some(6961),
-                citers: None,
-            }
-        );
+        assert_eq!(papers[2], {
+            let mut paper = Paper::new(
+                "Significance of electromagnetic potentials in the quantum theory",
+                5545735591029960915,
+            );
+            paper.citation_count = Some(6961);
+            paper
+        });
     }
 
     #[test]
@@ -333,46 +316,36 @@ mod tests {
 
         assert_eq!(
             target_paper,
-            Paper {
-                title: String::from(
-                    "Significance of electromagnetic potentials in the quantum theory"
-                ),
-                id: 5545735591029960915,
-                citation_count: None,
-                citers: None,
-            }
+            Paper::new(
+                "Significance of electromagnetic potentials in the quantum theory",
+                5545735591029960915,
+            )
         );
 
         assert_eq!(citer_papers.len(), 10);
 
-        assert_eq!(
-            citer_papers[0],
-            Paper {
-                title: String::from("Quantal phase factors accompanying adiabatic changes"),
-                id: 15570691018430890829,
-                citation_count: Some(7813),
-                citers: None,
-            }
-        );
+        assert_eq!(citer_papers[0], {
+            let mut paper = Paper::new(
+                "Quantal phase factors accompanying adiabatic changes",
+                15570691018430890829,
+            );
+            paper.citation_count = Some(7813);
+            paper
+        });
 
-        assert_eq!(
-            citer_papers[1],
-            Paper {
-                title: String::from("Multiferroics: a magnetic twist for ferroelectricity"),
-                id: 9328505180409005573,
-                citation_count: Some(3232),
-                citers: None,
-            }
-        );
+        assert_eq!(citer_papers[1], {
+            let mut paper = Paper::new(
+                "Multiferroics: a magnetic twist for ferroelectricity",
+                9328505180409005573,
+            );
+            paper.citation_count = Some(3232);
+            paper
+        });
 
-        assert_eq!(
-            citer_papers[2],
-            Paper {
-                title: String::from("Quantum field theory"),
-                id: 14398189842493937255,
-                citation_count: Some(2911),
-                citers: None,
-            }
-        );
+        assert_eq!(citer_papers[2], {
+            let mut paper = Paper::new("Quantum field theory", 14398189842493937255);
+            paper.citation_count = Some(2911);
+            paper
+        });
     }
 }
