@@ -1,12 +1,21 @@
+//! Send requests to Google Scholar.
+
 use reqwest::{self, Url};
 
 use super::SCHOLAR_URL_BASE;
 use errors::*;
 
+/// Query to Google Scholar.
 pub trait Query {
+    /// Convert to full URL which could be used to send a request.
     fn to_url(&self) -> Result<Url>;
 }
 
+/// Sends a GET request with `query` to Google Scholar.
+///
+/// # Return value
+///
+/// `Ok` of response body in `String`, or `Error`.
 pub fn send_request<Q: Query>(query: &Q) -> Result<String> {
     use reqwest::header::UserAgent;
 
@@ -20,6 +29,7 @@ pub fn send_request<Q: Query>(query: &Q) -> Result<String> {
     Ok(body)
 }
 
+/// Query to search Google Scholar for papers.
 pub struct SearchQuery {
     count: u32,
     words: Option<String>,
@@ -30,6 +40,8 @@ pub struct SearchQuery {
 const DEFAULT_COUNT: u32 = 5;
 
 impl Default for SearchQuery {
+    /// Default `count` is 5.
+    /// Title-only search is disabled.
     fn default() -> Self {
         SearchQuery {
             count: DEFAULT_COUNT,
@@ -83,6 +95,13 @@ impl Query for SearchQuery {
 }
 
 impl SearchQuery {
+    /// Set `count` to query limit.
+    /// Maximum `count` is 10; `count` will be rounded down to 10.
+    ///
+    /// Default
+    ///
+    /// # Example
+    ///
     /// ```
     /// use scholar::request::SearchQuery;
     ///
@@ -101,6 +120,11 @@ impl SearchQuery {
         self.count
     }
 
+    /// Set `words` to search query.
+    /// 'Words' or 'phrase' query specified so far will be cleared.
+    ///
+    /// # Example
+    ///
     /// ```
     /// use scholar::request::SearchQuery;
     ///
@@ -116,6 +140,11 @@ impl SearchQuery {
         self.words = Some(words.to_owned());
     }
 
+    /// Append `words` to search query.
+    /// If some 'words' or 'phrases' query is specified already, `words` will be appended to the query with one space.
+    ///
+    /// # Example
+    ///
     /// ```
     /// use scholar::request::SearchQuery;
     ///
@@ -144,6 +173,11 @@ impl SearchQuery {
         &self.words
     }
 
+    /// Set `phrase` to search query.
+    /// 'Words' or 'phrase' query specified so far will be cleared.
+    ///
+    /// # Example
+    ///
     /// ```
     /// use scholar::request::SearchQuery;
     ///
@@ -156,6 +190,11 @@ impl SearchQuery {
         self.set_words(&format!("\"{}\"", phrase));
     }
 
+    /// Append `phrase` to search query.
+    /// If some 'words' or 'phrases' query is set already, `phrase` will be appended to the query with one space.
+    ///
+    /// # Example
+    ///
     /// ```
     /// use scholar::request::SearchQuery;
     ///
@@ -171,6 +210,11 @@ impl SearchQuery {
         self.append_words(&format!("\"{}\"", phrase));
     }
 
+    /// Set `authors` to search query.
+    /// 'Authors' query specified so far will be cleared.
+    ///
+    /// # Example
+    ///
     /// ```
     /// use scholar::request::SearchQuery;
     ///
@@ -186,6 +230,11 @@ impl SearchQuery {
         self.authors = Some(authors.to_owned());
     }
 
+    /// Append `authors` to search query.
+    /// If some 'authors' query is set already, `authors` will be appended to the query with one space.
+    ///
+    /// # Example
+    ///
     /// ```
     /// use scholar::request::SearchQuery;
     ///
@@ -213,6 +262,13 @@ impl SearchQuery {
         &self.authors
     }
 
+    /// Enable or disable title-only search.
+    ///
+    /// To enable, set `title_only` argument `true`;
+    /// To disable, set `title_only` argument `false`.
+    ///
+    /// # Example
+    ///
     /// ```
     /// use scholar::request::SearchQuery;
     ///

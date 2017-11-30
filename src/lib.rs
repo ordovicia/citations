@@ -11,16 +11,9 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 
-/// `Error`-related structs defined with `error-chain`.
 pub mod errors;
-
-/// `Paper` struct.
 pub mod paper;
-
-/// Send requests to Google Scholar.
 pub mod request;
-
-/// Scrape HTML document to get information of papers.
 pub mod scrape;
 
 const SCHOLAR_URL_BASE: &str = "https://scholar.google.com/scholar";

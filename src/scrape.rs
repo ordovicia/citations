@@ -1,3 +1,5 @@
+//! Scrape HTML document to get information of papers.
+
 use std::io;
 use std::ops::Deref;
 
