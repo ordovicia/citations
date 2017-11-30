@@ -360,7 +360,11 @@ mod tests {
 
         assert_eq!(citer_papers[2], {
             let mut paper = Paper::new("Quantum field theory", 14398189842493937255);
-            paper.link = Some(String::from("https://books.google.co.jp/books?hl=en&lr=&id=nnuW_kVJ500C&oi=fnd&pg=PR17&ots=vrupeDXT-V&sig=MofOsrk4Hh9qXjkS_WuQ7jHr2sY"));
+            paper.link = Some(String::from(
+                "https://books.google.co.jp/books?\
+                 hl=en&lr=&id=nnuW_kVJ500C&oi=fnd&pg=PR17\
+                 &ots=vrupeDXT-V&sig=MofOsrk4Hh9qXjkS_WuQ7jHr2sY",
+            ));
             paper.citation_count = Some(2911);
             paper
         });

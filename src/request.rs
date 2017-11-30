@@ -141,7 +141,8 @@ impl SearchQuery {
     }
 
     /// Append `words` to search query.
-    /// If some 'words' or 'phrases' query is specified already, `words` will be appended to the query with one space.
+    /// If some 'words' or 'phrases' query is specified already,
+    /// `words` will be appended to the query with one space.
     ///
     /// # Example
     ///
@@ -191,7 +192,8 @@ impl SearchQuery {
     }
 
     /// Append `phrase` to search query.
-    /// If some 'words' or 'phrases' query is set already, `phrase` will be appended to the query with one space.
+    /// If some 'words' or 'phrases' query is set already,
+    /// `phrase` will be appended to the query with one space.
     ///
     /// # Example
     ///
@@ -231,7 +233,8 @@ impl SearchQuery {
     }
 
     /// Append `authors` to search query.
-    /// If some 'authors' query is set already, `authors` will be appended to the query with one space.
+    /// If some 'authors' query is set already,
+    /// `authors` will be appended to the query with one space.
     ///
     /// # Example
     ///

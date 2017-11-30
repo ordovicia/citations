@@ -76,8 +76,8 @@ impl Paper {
 }
 
 fn option_na(c: &Option<String>) -> Cow<'static, str> {
-    match c {
-        &Some(ref c) => c.clone().into(),
-        &None => "N/A".into(),
+    match *c {
+        Some(ref c) => c.clone().into(),
+        None => "N/A".into(),
     }
 }
