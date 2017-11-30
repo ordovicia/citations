@@ -6,6 +6,8 @@ use std::borrow::Cow;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct Paper {
     pub title: String,
+    /// Link to PDF, HTML, etc.
+    pub link: Option<String>,
     /// Cluster ID of paper.
     pub id: u64,
     pub citation_count: Option<u32>,
@@ -19,12 +21,14 @@ impl fmt::Display for Paper {
         write!(
             f,
             r#""{}"
+ Link to paper: {}
     Cluster ID: {}
 Citation count: {}
   Citation URL: {}"#,
             self.title,
+            option_na(&self.link),
             self.id,
-            citation_count_to_cow(self.citation_count),
+            option_na(&self.citation_count.map(|u| u.to_string())),
             self.citation_url,
         )
     }
@@ -45,6 +49,7 @@ impl Paper {
     /// assert_eq!(paper,
     ///     Paper {
     ///         title: String::from("foo"),
+    ///         link: None,
     ///         id: 42,
     ///         citation_count: None,
     ///         citers: None,
@@ -57,6 +62,7 @@ impl Paper {
 
         Self {
             title,
+            link: None,
             id,
             citation_count: None,
             citers: None,
@@ -69,9 +75,9 @@ impl Paper {
     }
 }
 
-fn citation_count_to_cow(c: Option<u32>) -> Cow<'static, str> {
+fn option_na(c: &Option<String>) -> Cow<'static, str> {
     match c {
-        Some(c) => c.to_string().into(),
-        None => "N/A".into(),
+        &Some(ref c) => c.clone().into(),
+        &None => "N/A".into(),
     }
 }

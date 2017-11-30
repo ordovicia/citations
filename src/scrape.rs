@@ -62,15 +62,17 @@ impl SearchDocument {
     }
 
     fn scrape_paper_one(node: &Node) -> Result<Paper> {
-        let title = Self::scrape_title(node);
+        let (title, link) = Self::scrape_title_and_link(node);
         let (id, c) = Self::scrape_id_and_citation(node)?;
 
         let mut paper = Paper::new(&title, id);
+        paper.link = link;
         paper.citation_count = Some(c);
+
         Ok(paper)
     }
 
-    fn scrape_title(node: &Node) -> String {
+    fn scrape_title_and_link(node: &Node) -> (String, Option<String>) {
         // There are (at least) two formats.
         //
         // 1. Link to a paper or something:
@@ -95,28 +97,30 @@ impl SearchDocument {
         //   Title of paper or something
         // </h3>
 
-        // 1. Link to a paper or something
         let pos = Class("gs_rt").child(Name("a"));
         if let Some(n) = node.find(pos).nth(0) {
-            return n.text();
+            // 1. Link to a paper or something
+            let title = n.text();
+            let link = n.attr("href");
+            (title, link.map(ToOwned::to_owned))
+        } else {
+            // 2. Not a link
+            let children = node.find(Class("gs_rt")).into_selection().children();
+            let text_nodes = children.filter(|n: &Node| {
+                if let Some(name) = n.name() {
+                    name != "span"
+                } else {
+                    true
+                }
+            });
+            let concated_text = text_nodes
+                .into_iter()
+                .map(|n| n.text())
+                .collect::<String>()
+                .trim()
+                .to_string();
+            (concated_text, None)
         }
-
-        // 2. Not a link
-        let children = node.find(Class("gs_rt")).into_selection().children();
-        let text_nodes = children.filter(|n: &Node| {
-            if let Some(name) = n.name() {
-                name != "span"
-            } else {
-                true
-            }
-        });
-        let concated_text = text_nodes
-            .into_iter()
-            .map(|n| n.text())
-            .collect::<String>()
-            .trim()
-            .to_string();
-        concated_text
     }
 
     // Scrape article footer for
@@ -284,6 +288,7 @@ mod tests {
                 "Quantum field theory and critical phenomena",
                 16499695044466828447,
             );
+            paper.link = Some(String::from("http://cds.cern.ch/record/2280881"));
             paper.citation_count = Some(4821);
             paper
         });
@@ -299,6 +304,9 @@ mod tests {
                 "Significance of electromagnetic potentials in the quantum theory",
                 5545735591029960915,
             );
+            paper.link = Some(String::from(
+                "https://journals.aps.org/pr/abstract/10.1103/PhysRev.115.485",
+            ));
             paper.citation_count = Some(6961);
             paper
         });
@@ -331,6 +339,9 @@ mod tests {
                 "Quantal phase factors accompanying adiabatic changes",
                 15570691018430890829,
             );
+            paper.link = Some(String::from(
+                "http://rspa.royalsocietypublishing.org/content/royprsa/392/1802/45.full.pdf",
+            ));
             paper.citation_count = Some(7813);
             paper
         });
@@ -340,12 +351,16 @@ mod tests {
                 "Multiferroics: a magnetic twist for ferroelectricity",
                 9328505180409005573,
             );
+            paper.link = Some(String::from(
+                "https://www.nature.com/nmat/journal/v6/n1/abs/nmat1804.html",
+            ));
             paper.citation_count = Some(3232);
             paper
         });
 
         assert_eq!(citer_papers[2], {
             let mut paper = Paper::new("Quantum field theory", 14398189842493937255);
+            paper.link = Some(String::from("https://books.google.co.jp/books?hl=en&lr=&id=nnuW_kVJ500C&oi=fnd&pg=PR17&ots=vrupeDXT-V&sig=MofOsrk4Hh9qXjkS_WuQ7jHr2sY"));
             paper.citation_count = Some(2911);
             paper
         });
