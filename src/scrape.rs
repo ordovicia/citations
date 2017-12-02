@@ -121,10 +121,12 @@ impl ClusterDocument {
 
 fn scrape_paper_one(node: &Node) -> Result<Paper> {
     let (title, link) = scrape_title_and_link(node);
+    let year = scrape_year(node)?;
     let (cluster_id, c) = scrape_cluster_id_and_citation(node)?;
 
     let mut paper = Paper::new(&title, cluster_id);
     paper.link = link;
+    paper.year = Some(year);
     paper.citation_count = Some(c);
 
     Ok(paper)
@@ -181,6 +183,30 @@ fn scrape_title_and_link(node: &Node) -> (String, Option<String>) {
     }
 }
 
+// Publishment information format:
+//
+// <div class="gs_a">
+//   Author - Journal etc., year - Journal etc.
+// </div>
+//
+// Author and 'Journal etc.' can be a link:
+//
+// <div class="gs_a">
+//   <a href="/citations?user=0">Author</a> - Journal etc., year - Journal etc.
+// </div>
+//
+fn scrape_year(node: &Node) -> Result<u32> {
+    let pos = Class("gs_a").descendant(Text);
+    let year_node = node.find(pos)
+        .into_selection()
+        .filter(|n: &Node| parse_year(&n.text()).is_ok())
+        .first();
+    let year_node = try_html_bad!(year_node);
+    let year = parse_year(&year_node.text()).unwrap();
+
+    Ok(year)
+}
+
 // Scrape article footer for
 //
 // * cluster ID, and
@@ -217,6 +243,22 @@ fn scrape_cluster_id_and_citation(node: &Node) -> Result<(u64, u32)> {
     let citation_count = parse_citation_count(&citation_node.text())?;
 
     Ok((cluster_id, citation_count))
+}
+
+fn parse_year(text: &str) -> Result<u32> {
+    use regex::Regex;
+
+    lazy_static! {
+        static ref RE: Regex = Regex::new(r"-\s.*((19|20){1}(\d{2}))\s-").unwrap();
+    }
+
+    let caps = try_html_bad!(RE.captures(text));
+    let year = {
+        let year = try_html_bad!(caps.get(1));
+        year.as_str().parse()?
+    };
+
+    Ok(year)
 }
 
 fn parse_cluster_id_from_url(url: &str) -> Result<u64> {
@@ -304,12 +346,14 @@ mod tests {
                 16499695044466828447,
             );
             paper.link = Some(String::from("http://cds.cern.ch/record/2280881"));
+            paper.year = Some(1996);
             paper.citation_count = Some(4821);
             paper
         });
 
         assert_eq!(papers[1], {
             let mut paper = Paper::new("Quantum theory of solids", 8552492368061991976);
+            paper.year = Some(1963);
             paper.citation_count = Some(4190);
             paper
         });
@@ -322,6 +366,7 @@ mod tests {
             paper.link = Some(String::from(
                 "https://journals.aps.org/pr/abstract/10.1103/PhysRev.115.485",
             ));
+            paper.year = Some(1959);
             paper.citation_count = Some(6961);
             paper
         });
@@ -357,6 +402,7 @@ mod tests {
             paper.link = Some(String::from(
                 "http://rspa.royalsocietypublishing.org/content/royprsa/392/1802/45.full.pdf",
             ));
+            paper.year = Some(1984);
             paper.citation_count = Some(7813);
             paper
         });
@@ -369,6 +415,7 @@ mod tests {
             paper.link = Some(String::from(
                 "https://www.nature.com/nmat/journal/v6/n1/abs/nmat1804.html",
             ));
+            paper.year = Some(2007);
             paper.citation_count = Some(3232);
             paper
         });
@@ -380,6 +427,7 @@ mod tests {
                  hl=en&lr=&id=nnuW_kVJ500C&oi=fnd&pg=PR17\
                  &ots=vrupeDXT-V&sig=MofOsrk4Hh9qXjkS_WuQ7jHr2sY",
             ));
+            paper.year = Some(1996);
             paper.citation_count = Some(2911);
             paper
         });

@@ -2,12 +2,13 @@
 
 use std::fmt;
 use std::borrow::Cow;
-
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct Paper {
     pub title: String,
     /// Link to PDF, HTML, etc.
     pub link: Option<String>,
+    /// Published year.
+    pub year: Option<u32>,
     /// Cluster ID of paper.
     pub cluster_id: u64,
     pub citation_count: Option<u32>,
@@ -22,11 +23,13 @@ impl fmt::Display for Paper {
             f,
             r#""{}"
  Link to paper: {}
+Published year: {}
     Cluster ID: {}
 Citation count: {}
  Citation List: {}"#,
             self.title,
             option_na(&self.link),
+            option_na(&self.year),
             self.cluster_id,
             option_na(&self.citation_count.map(|u| u.to_string())),
             self.citation_url,
@@ -50,6 +53,7 @@ impl Paper {
     ///     Paper {
     ///         title: String::from("foo"),
     ///         link: None,
+    ///         year: None,
     ///         cluster_id: 42,
     ///         citation_count: None,
     ///         citers: None,
@@ -63,6 +67,7 @@ impl Paper {
         Self {
             title,
             link: None,
+            year: None,
             cluster_id,
             citation_count: None,
             citers: None,
@@ -75,9 +80,9 @@ impl Paper {
     }
 }
 
-fn option_na(c: &Option<String>) -> Cow<'static, str> {
+fn option_na<T: ToString>(c: &Option<T>) -> Cow<'static, str> {
     match *c {
-        Some(ref c) => c.clone().into(),
+        Some(ref c) => c.to_string().into(),
         None => "N/A".into(),
     }
 }
