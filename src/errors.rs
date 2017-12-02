@@ -11,6 +11,9 @@ error_chain!{
         BadHtml {
             description("Bad HTML structure")
         }
+        NotFount {
+            description("Result not found")
+        }
         InvalidQuery {
             description("Invalid query")
         }

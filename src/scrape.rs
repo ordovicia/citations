@@ -66,8 +66,12 @@ macro_rules! impl_from_to_document {
     }
 }
 
-macro_rules! try_html {
+macro_rules! try_html_bad {
     ($a: expr) => { $a.ok_or(ErrorKind::BadHtml)? }
+}
+
+macro_rules! try_html_found {
+    ($a: expr) => { $a.ok_or(ErrorKind::NotFount)? }
 }
 
 pub struct SearchDocument(Document);
@@ -82,12 +86,12 @@ impl CitationDocument {
             let pos = Attr("id", "gs_rt_hdr")
                 .child(Name("h2"))
                 .child(Name("a").or(Text));
-            try_html!(self.find(pos).nth(0))
+            try_html_found!(self.find(pos).nth(0))
         };
 
         let title = node.text();
         let id = {
-            let id_url = try_html!(node.attr("href"));
+            let id_url = try_html_bad!(node.attr("href"));
             parse_id_from_url(id_url)?
         };
 
@@ -110,7 +114,7 @@ impl_from_to_document!(IdDocument);
 impl IdDocument {
     pub fn scrape_target_paper(&self) -> Result<Paper> {
         let pos = Attr("id", "gs_res_ccl_mid").descendant(Class("gs_ri"));
-        let node = self.find(pos).next().unwrap();
+        let node = try_html_found!(self.find(pos).nth(0));
         scrape_paper_one(&node)
     }
 }
@@ -191,7 +195,7 @@ fn scrape_id_and_citation(node: &Node) -> Result<(u64, u32)> {
     // </div>
 
     let pos = Class("gs_fl");
-    let footers = try_html!(node.find(pos).nth(0)).children();
+    let footers = try_html_bad!(node.find(pos).nth(0)).children();
 
     let citation_node = footers
         .into_selection()
@@ -203,7 +207,7 @@ fn scrape_id_and_citation(node: &Node) -> Result<(u64, u32)> {
             }
         })
         .first();
-    let citation_node = try_html!(citation_node);
+    let citation_node = try_html_bad!(citation_node);
 
     let id = {
         let id_url = citation_node.attr("href").unwrap();
@@ -222,9 +226,9 @@ fn parse_id_from_url(url: &str) -> Result<u64> {
         static ref RE: Regex = Regex::new(r"(cluster|cites)=(\d+)").unwrap();
     }
 
-    let caps = try_html!(RE.captures(url));
+    let caps = try_html_bad!(RE.captures(url));
     let id = {
-        let id = try_html!(caps.get(2));
+        let id = try_html_bad!(caps.get(2));
         id.as_str().parse()?
     };
 
@@ -238,9 +242,9 @@ fn parse_citation_count(text: &str) -> Result<u32> {
         static ref RE: Regex = Regex::new(r"[^\d]+(\d+)").unwrap();
     }
 
-    let caps = try_html!(RE.captures(text));
+    let caps = try_html_bad!(RE.captures(text));
     let count = {
-        let count = try_html!(caps.get(1));
+        let count = try_html_bad!(caps.get(1));
         count.as_str().parse().unwrap()
     };
 
