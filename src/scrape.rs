@@ -10,39 +10,12 @@ use select::predicate::{Attr, Class, Name, Predicate, Text};
 use paper::Paper;
 use errors::*;
 
-macro_rules! try_html {
-    ($a: expr) => { $a.ok_or(ErrorKind::BadHtml)? }
+pub trait PapersDocument {
+    fn scrape_papers(&self) -> Result<Vec<Paper>>;
 }
 
-pub struct SearchDocument(Document);
-pub struct CitationDocument(SearchDocument);
-
-impl Deref for SearchDocument {
-    type Target = Document;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<'a> From<&'a str> for SearchDocument {
-    fn from(s: &str) -> Self {
-        let document = Document::from(s);
-        SearchDocument(document)
-    }
-}
-
-impl SearchDocument {
-    pub fn new(document: Document) -> Self {
-        SearchDocument(document)
-    }
-
-    pub fn from_read<R: io::Read>(readable: R) -> Result<Self> {
-        let document = Document::from_read(readable)?;
-        Ok(Self::new(document))
-    }
-
-    pub fn scrape_papers(&self) -> Result<Vec<Paper>> {
+impl PapersDocument for Document {
+    fn scrape_papers(&self) -> Result<Vec<Paper>> {
         // <div id="gs_res_ccl_mid">
         //   <div class="gs_ri">
         //     paper
@@ -55,131 +28,55 @@ impl SearchDocument {
 
         let mut papers = Vec::with_capacity(10);
         for n in nodes {
-            papers.push(Self::scrape_paper_one(&n)?);
+            papers.push(scrape_paper_one(&n)?);
         }
 
         Ok(papers)
     }
+}
 
-    fn scrape_paper_one(node: &Node) -> Result<Paper> {
-        let (title, link) = Self::scrape_title_and_link(node);
-        let (id, c) = Self::scrape_id_and_citation(node)?;
+macro_rules! impl_from_to_document {
+    ($struct: ident) => {
+        impl Deref for $struct {
+            type Target = Document;
 
-        let mut paper = Paper::new(&title, id);
-        paper.link = link;
-        paper.citation_count = Some(c);
+            fn deref(&self) -> &Self::Target {
+                &self.0
+            }
+        }
 
-        Ok(paper)
-    }
+        impl<'a> From<&'a str> for $struct {
+            fn from(s: &str) -> Self {
+                let document = Document::from(s);
+                $struct(document)
+            }
+        }
 
-    fn scrape_title_and_link(node: &Node) -> (String, Option<String>) {
-        // There are (at least) two formats.
-        //
-        // 1. Link to a paper or something:
-        //
-        // <h3 class="gs_rt">
-        //   <span>
-        //       something
-        //   </span>
-        //   <a href="http://paper.pdf">
-        //     Title of paper or something
-        //   </a>
-        // </h3>
-        //
-        // 'span' may not exists.
-        //
-        // 2. Not a link:
-        //
-        // <h3 class="gs_rt">
-        //   <span>
-        //       something
-        //   </span>
-        //   Title of paper or something
-        // </h3>
+        impl $struct {
+            pub fn new(document: Document) -> Self {
+                $struct(document)
+            }
 
-        let pos = Class("gs_rt").child(Name("a"));
-        if let Some(n) = node.find(pos).nth(0) {
-            // 1. Link to a paper or something
-            let title = n.text();
-            let link = n.attr("href");
-            (title, link.map(ToOwned::to_owned))
-        } else {
-            // 2. Not a link
-            let children = node.find(Class("gs_rt")).into_selection().children();
-            let text_nodes = children.filter(|n: &Node| {
-                if let Some(name) = n.name() {
-                    name != "span"
-                } else {
-                    true
-                }
-            });
-            let concated_text = text_nodes
-                .into_iter()
-                .map(|n| n.text())
-                .collect::<String>()
-                .trim()
-                .to_string();
-            (concated_text, None)
+            // like Document::from_read()
+            pub fn from_read<R: io::Read>(readable: R) -> Result<Self> {
+                let document = Document::from_read(readable)?;
+                Ok(Self::new(document))
+            }
         }
     }
-
-    // Scrape article footer for
-    //
-    // * cluster id, and
-    // * citation count
-    fn scrape_id_and_citation(node: &Node) -> Result<(u64, u32)> {
-        // Footer format:
-        //
-        // <div class="gs_fl">
-        //   (something)
-        //   <a href="/scholar?cites=000000>Cited by 999</a>
-        //   (something)
-        // </div>
-
-        let pos = Class("gs_fl");
-        let footers = try_html!(node.find(pos).nth(0)).children();
-
-        let citation_node = footers
-            .into_selection()
-            .filter(|n: &Node| {
-                if let Some(id_url) = n.attr("href") {
-                    parse_id_from_url(id_url).is_ok()
-                } else {
-                    false
-                }
-            })
-            .first();
-        let citation_node = try_html!(citation_node);
-
-        let id = {
-            let id_url = citation_node.attr("href").unwrap();
-            parse_id_from_url(id_url).unwrap()
-        };
-
-        let citation_count = parse_citation_count(&citation_node.text())?;
-
-        Ok((id, citation_count))
-    }
 }
 
-impl Deref for CitationDocument {
-    type Target = SearchDocument;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
+macro_rules! try_html {
+    ($a: expr) => { $a.ok_or(ErrorKind::BadHtml)? }
 }
+
+pub struct SearchDocument(Document);
+impl_from_to_document!(SearchDocument);
+
+pub struct CitationDocument(Document);
+impl_from_to_document!(CitationDocument);
 
 impl CitationDocument {
-    pub fn new(document: Document) -> Self {
-        CitationDocument(SearchDocument::new(document))
-    }
-
-    pub fn from_read<R: io::Read>(readable: R) -> Result<Self> {
-        let document = Document::from_read(readable)?;
-        Ok(Self::new(document))
-    }
-
     pub fn scrape_target_paper(&self) -> Result<Paper> {
         let node = {
             let pos = Attr("id", "gs_rt_hdr")
@@ -205,6 +102,117 @@ impl CitationDocument {
         paper.citers = Some(citers);
         Ok(paper)
     }
+}
+
+pub struct IdDocument(Document);
+impl_from_to_document!(IdDocument);
+
+impl IdDocument {
+    pub fn scrape_target_paper(&self) -> Result<Paper> {
+        let pos = Attr("id", "gs_res_ccl_mid").descendant(Class("gs_ri"));
+        let node = self.find(pos).next().unwrap();
+        scrape_paper_one(&node)
+    }
+}
+
+fn scrape_paper_one(node: &Node) -> Result<Paper> {
+    let (title, link) = scrape_title_and_link(node);
+    let (id, c) = scrape_id_and_citation(node)?;
+
+    let mut paper = Paper::new(&title, id);
+    paper.link = link;
+    paper.citation_count = Some(c);
+
+    Ok(paper)
+}
+
+fn scrape_title_and_link(node: &Node) -> (String, Option<String>) {
+    // There are (at least) two formats.
+    //
+    // 1. Link to a paper or something:
+    //
+    // <h3 class="gs_rt">
+    //   <span>
+    //       something
+    //   </span>
+    //   <a href="http://paper.pdf">
+    //     Title of paper or something
+    //   </a>
+    // </h3>
+    //
+    // 'span' may not exists.
+    //
+    // 2. Not a link:
+    //
+    // <h3 class="gs_rt">
+    //   <span>
+    //       something
+    //   </span>
+    //   Title of paper or something
+    // </h3>
+
+    let pos = Class("gs_rt").child(Name("a"));
+    if let Some(n) = node.find(pos).nth(0) {
+        // 1. Link to a paper or something
+        let title = n.text();
+        let link = n.attr("href");
+        (title, link.map(ToOwned::to_owned))
+    } else {
+        // 2. Not a link
+        let children = node.find(Class("gs_rt")).into_selection().children();
+        let text_nodes = children.filter(|n: &Node| {
+            if let Some(name) = n.name() {
+                name != "span"
+            } else {
+                true
+            }
+        });
+        let concated_text = text_nodes
+            .into_iter()
+            .map(|n| n.text())
+            .collect::<String>()
+            .trim()
+            .to_string();
+        (concated_text, None)
+    }
+}
+
+// Scrape article footer for
+//
+// * cluster id, and
+// * citation count
+fn scrape_id_and_citation(node: &Node) -> Result<(u64, u32)> {
+    // Footer format:
+    //
+    // <div class="gs_fl">
+    //   (something)
+    //   <a href="/scholar?cites=000000>Cited by 999</a>
+    //   (something)
+    // </div>
+
+    let pos = Class("gs_fl");
+    let footers = try_html!(node.find(pos).nth(0)).children();
+
+    let citation_node = footers
+        .into_selection()
+        .filter(|n: &Node| {
+            if let Some(id_url) = n.attr("href") {
+                parse_id_from_url(id_url).is_ok()
+            } else {
+                false
+            }
+        })
+        .first();
+    let citation_node = try_html!(citation_node);
+
+    let id = {
+        let id_url = citation_node.attr("href").unwrap();
+        parse_id_from_url(id_url).unwrap()
+    };
+
+    let citation_count = parse_citation_count(&citation_node.text())?;
+
+    Ok((id, citation_count))
 }
 
 fn parse_id_from_url(url: &str) -> Result<u64> {

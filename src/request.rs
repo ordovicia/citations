@@ -2,7 +2,7 @@
 
 use reqwest::{self, Url};
 
-use super::SCHOLAR_URL_BASE;
+use super::GOOGLESCHOLAR_URL_BASE;
 use errors::*;
 
 /// Query to Google Scholar.
@@ -67,7 +67,7 @@ impl Query for SearchQuery {
             }
         }
 
-        let mut url = Url::parse(SCHOLAR_URL_BASE).unwrap();
+        let mut url = Url::parse(GOOGLESCHOLAR_URL_BASE).unwrap();
 
         let query = format!(
             "as_q={}\
@@ -298,6 +298,25 @@ impl SearchQuery {
     }
 }
 
+pub struct IdQuery {
+    id: u64,
+}
+
+impl IdQuery {
+    pub fn new(id: u64) -> Self {
+        Self { id }
+    }
+}
+
+impl Query for IdQuery {
+    fn to_url(&self) -> Result<Url> {
+        let mut url = Url::parse(GOOGLESCHOLAR_URL_BASE).unwrap();
+        let query = format!("cluster={}", self.id);
+        url.set_query(Some(&query));
+        Ok(url)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -329,7 +348,7 @@ mod tests {
                  &hl=en\
                  &num={}\
                  &as_sdt=0%2C5",
-                SCHOLAR_URL_BASE,
+                GOOGLESCHOLAR_URL_BASE,
                 NEW_COUNT
             )).unwrap()
         );
@@ -356,5 +375,15 @@ mod tests {
     fn search_query_is_valid_fail() {
         let q = SearchQuery::default();
         assert!(!q.is_valid());
+    }
+
+    #[test]
+    fn id_query_to_url() {
+        const TEST_ID: u64 = 999;
+        let q = IdQuery::new(TEST_ID);
+        assert_eq!(
+            q.to_url().unwrap(),
+            Url::parse(&format!("{}?cluster={}", GOOGLESCHOLAR_URL_BASE, TEST_ID)).unwrap()
+        );
     }
 }

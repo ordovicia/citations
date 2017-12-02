@@ -71,7 +71,7 @@ impl Paper {
     }
 
     fn id_to_citation_url(id: u64) -> String {
-        format!("{}?cites={}", super::SCHOLAR_URL_BASE, id)
+        format!("{}?cites={}", super::GOOGLESCHOLAR_URL_BASE, id)
     }
 }
 

@@ -16,4 +16,4 @@ pub mod paper;
 pub mod request;
 pub mod scrape;
 
-const SCHOLAR_URL_BASE: &str = "https://scholar.google.com/scholar";
+const GOOGLESCHOLAR_URL_BASE: &str = "https://scholar.google.com/scholar";

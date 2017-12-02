@@ -8,10 +8,10 @@ extern crate scholar;
 
 use std::fs;
 
-use clap::{App, Arg, ArgGroup};
+use clap::{App, Arg, ArgGroup, ArgMatches};
 
 use scholar::request;
-use scholar::scrape::{CitationDocument, SearchDocument};
+use scholar::scrape::{CitationDocument, IdDocument, PapersDocument, SearchDocument};
 
 mod config;
 mod errors;
@@ -22,7 +22,70 @@ use errors::*;
 quick_main!(run);
 
 fn run() -> Result<()> {
-    let mut app = App::new(env!("CARGO_PKG_NAME"))
+    let matches = app().get_matches();
+
+    if !query_exists(&matches) {
+        use clap::{Error, ErrorKind};
+
+        app().print_help()?;
+        println!("\n");
+        Error::with_description("Missing query", ErrorKind::MissingRequiredArgument).exit();
+    }
+
+    let mut cfg = Config::default();
+
+    if matches.is_present("json") {
+        cfg.output_format = OutputFormat::Json;
+    }
+
+    if matches.is_present("id") {
+        let id = value_t!(matches, "id", u64).unwrap_or_else(|e| e.exit());
+        let query = request::IdQuery::new(id);
+        let body = request::send_request(&query)?;
+        let doc = IdDocument::from(&*body);
+
+        run_id_document(&doc, &cfg)?;
+    } else if let Some(cite_file) = matches.value_of("cite-html") {
+        let file = fs::File::open(cite_file)?;
+        let doc = CitationDocument::from_read(file)?;
+
+        run_citation_document(&doc, &cfg)?;
+    } else {
+        let search_doc = if let Some(search_file) = matches.value_of("search-html") {
+            let file = fs::File::open(search_file)?;
+            SearchDocument::from_read(file)?
+        } else {
+            let mut query = request::SearchQuery::default();
+
+            if matches.is_present("count") {
+                let count = value_t!(matches, "count", u32).unwrap_or_else(|e| e.exit());
+                query.set_count(count);
+            }
+            if let Some(words) = matches.value_of("words") {
+                query.set_words(words);
+            }
+            if let Some(phrase) = matches.value_of("phrase") {
+                query.set_phrase(phrase);
+            }
+            if let Some(authors) = matches.value_of("authors") {
+                query.set_authors(authors);
+            }
+            if matches.is_present("title-only") {
+                query.set_title_only(true);
+            }
+
+            let body = request::send_request(&query)?;
+            SearchDocument::from(&*body)
+        };
+
+        run_search_document(&search_doc, &cfg)?;
+    }
+
+    Ok(())
+}
+
+fn app() -> App<'static, 'static> {
+    App::new(env!("CARGO_PKG_NAME"))
         .version(crate_version!())
         .arg(
             Arg::with_name("count")
@@ -67,7 +130,7 @@ fn run() -> Result<()> {
             ArgGroup::with_name("search-query")
                 .args(&["words", "phrase", "authors"])
                 .multiple(true)
-                .conflicts_with("html"),
+                .conflicts_with_all(&["html", "id"]),
         )
         .arg(
             Arg::with_name("search-html")
@@ -85,64 +148,42 @@ fn run() -> Result<()> {
                 .value_name("file")
                 .display_order(11),
         )
-        .group(ArgGroup::with_name("html").args(&["search-html", "cite-html"]))
+        .group(
+            ArgGroup::with_name("html")
+                .args(&["search-html", "cite-html"])
+                .conflicts_with("id"),
+        )
+        .arg(
+            Arg::with_name("id")
+                .long("cluster-id")
+                .help("Search a paper with this cluster ID")
+                .takes_value(true)
+                .display_order(20),
+        )
         .arg(
             Arg::with_name("json")
                 .long("json")
                 .help("Output in JSON format")
                 .display_order(20),
-        );
+        )
+}
 
-    let matches = app.clone().get_matches();
+fn query_exists(matches: &ArgMatches) -> bool {
+    matches.is_present("search-query") || matches.is_present("html") || matches.is_present("id")
+}
 
-    if !(matches.is_present("search-query") || matches.is_present("html")) {
-        use clap::{Error, ErrorKind};
+fn run_id_document(doc: &IdDocument, cfg: &Config) -> Result<()> {
+    let target_paper = doc.scrape_target_paper()?;
 
-        app.print_help()?;
-        println!("\n");
-        Error::with_description("Missing query", ErrorKind::MissingRequiredArgument).exit();
-    }
-
-    let mut cfg = Config::default();
-
-    if matches.is_present("json") {
-        cfg.output_format = OutputFormat::Json;
-    }
-
-    if let Some(cite_file) = matches.value_of("cite-html") {
-        let file = fs::File::open(cite_file)?;
-        let doc = CitationDocument::from_read(file)?;
-
-        run_citation_document(&doc, &cfg)?;
-    } else {
-        let search_doc = if let Some(search_file) = matches.value_of("search-html") {
-            let file = fs::File::open(search_file)?;
-            SearchDocument::from_read(file)?
-        } else {
-            let mut query = request::SearchQuery::default();
-
-            if matches.is_present("count") {
-                let count = value_t!(matches, "count", u32).unwrap_or_else(|e| e.exit());
-                query.set_count(count);
-            }
-            if let Some(words) = matches.value_of("words") {
-                query.set_words(words);
-            }
-            if let Some(phrase) = matches.value_of("phrase") {
-                query.set_phrase(phrase);
-            }
-            if let Some(authors) = matches.value_of("authors") {
-                query.set_authors(authors);
-            }
-            if matches.is_present("title-only") {
-                query.set_title_only(true);
-            }
-
-            let body = request::send_request(&query)?;
-            SearchDocument::from(&*body)
-        };
-
-        run_search_document(&search_doc, &cfg)?;
+    match cfg.output_format {
+        OutputFormat::HumanReadable => {
+            println!("Search result:\n");
+            println!("{}\n", target_paper);
+        }
+        OutputFormat::Json => {
+            let j = serde_json::to_string_pretty(&target_paper)?;
+            println!("{}", j);
+        }
     }
 
     Ok(())

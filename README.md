@@ -19,6 +19,7 @@ OPTIONS:
     -a, --authors <authors>     Search papers with these authors
         --search-html <file>    Scrape this HTML file as search results (possibly useful only when debugging)
         --cite-html <file>      Scrape this HTML file as citers list (possibly useful only when debugging)
+        --cluster-id <id>       Search a paper with this cluster ID
 ```
 
 ## Note
