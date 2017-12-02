@@ -11,12 +11,14 @@ use std::fs;
 use clap::{App, Arg, ArgGroup, ArgMatches};
 
 use scholar::request;
-use scholar::scrape::{CitationDocument, IdDocument, PapersDocument, SearchDocument};
+use scholar::scrape::{CitationDocument, IdDocument, SearchDocument};
 
 mod config;
+mod scrape;
 mod errors;
 
-use config::*;
+use config::Config;
+use scrape::Scrape;
 use errors::*;
 
 quick_main!(run);
@@ -32,54 +34,54 @@ fn run() -> Result<()> {
         Error::with_description("Missing query", ErrorKind::MissingRequiredArgument).exit();
     }
 
-    let mut cfg = Config::default();
-
-    if matches.is_present("json") {
-        cfg.output_format = OutputFormat::Json;
-    }
+    let cfg = Config::new(&matches);
 
     if matches.is_present("id") {
         let id = value_t!(matches, "id", u64).unwrap_or_else(|e| e.exit());
         let query = request::IdQuery::new(id);
         let body = request::send_request(&query)?;
         let doc = IdDocument::from(&*body);
+        doc.scrape(&cfg)?;
 
-        run_id_document(&doc, &cfg)?;
-    } else if let Some(cite_file) = matches.value_of("cite-html") {
+        return Ok(());
+    }
+
+    if let Some(cite_file) = matches.value_of("cite-html") {
         let file = fs::File::open(cite_file)?;
         let doc = CitationDocument::from_read(file)?;
+        doc.scrape(&cfg)?;
 
-        run_citation_document(&doc, &cfg)?;
-    } else {
-        let search_doc = if let Some(search_file) = matches.value_of("search-html") {
-            let file = fs::File::open(search_file)?;
-            SearchDocument::from_read(file)?
-        } else {
-            let mut query = request::SearchQuery::default();
-
-            if matches.is_present("count") {
-                let count = value_t!(matches, "count", u32).unwrap_or_else(|e| e.exit());
-                query.set_count(count);
-            }
-            if let Some(words) = matches.value_of("words") {
-                query.set_words(words);
-            }
-            if let Some(phrase) = matches.value_of("phrase") {
-                query.set_phrase(phrase);
-            }
-            if let Some(authors) = matches.value_of("authors") {
-                query.set_authors(authors);
-            }
-            if matches.is_present("title-only") {
-                query.set_title_only(true);
-            }
-
-            let body = request::send_request(&query)?;
-            SearchDocument::from(&*body)
-        };
-
-        run_search_document(&search_doc, &cfg)?;
+        return Ok(());
     }
+
+    let search_doc = if let Some(search_file) = matches.value_of("search-html") {
+        let file = fs::File::open(search_file)?;
+        SearchDocument::from_read(file)?
+    } else {
+        let mut query = request::SearchQuery::default();
+
+        if matches.is_present("count") {
+            let count = value_t!(matches, "count", u32).unwrap_or_else(|e| e.exit());
+            query.set_count(count);
+        }
+        if let Some(words) = matches.value_of("words") {
+            query.set_words(words);
+        }
+        if let Some(phrase) = matches.value_of("phrase") {
+            query.set_phrase(phrase);
+        }
+        if let Some(authors) = matches.value_of("authors") {
+            query.set_authors(authors);
+        }
+        if matches.is_present("title-only") {
+            query.set_title_only(true);
+        }
+
+        let body = request::send_request(&query)?;
+        SearchDocument::from(&*body)
+    };
+
+    search_doc.scrape(&cfg)?;
 
     Ok(())
 }
@@ -170,60 +172,4 @@ fn app() -> App<'static, 'static> {
 
 fn query_exists(matches: &ArgMatches) -> bool {
     matches.is_present("search-query") || matches.is_present("html") || matches.is_present("id")
-}
-
-fn run_id_document(doc: &IdDocument, cfg: &Config) -> Result<()> {
-    let target_paper = doc.scrape_target_paper()?;
-
-    match cfg.output_format {
-        OutputFormat::HumanReadable => {
-            println!("Search result:\n");
-            println!("{}\n", target_paper);
-        }
-        OutputFormat::Json => {
-            let j = serde_json::to_string_pretty(&target_paper)?;
-            println!("{}", j);
-        }
-    }
-
-    Ok(())
-}
-
-fn run_citation_document(doc: &CitationDocument, cfg: &Config) -> Result<()> {
-    let target_paper = doc.scrape_target_paper_with_citers()?;
-
-    match cfg.output_format {
-        OutputFormat::HumanReadable => {
-            println!("The target paper:\n");
-            println!("{}\n", target_paper);
-
-            println!("... is cited by:\n");
-            for citer in target_paper.citers.unwrap() {
-                println!("{}\n", citer);
-            }
-        }
-        OutputFormat::Json => {
-            let j = serde_json::to_string_pretty(&target_paper)?;
-            println!("{}", j);
-        }
-    }
-
-    Ok(())
-}
-
-fn run_search_document(doc: &SearchDocument, cfg: &Config) -> Result<()> {
-    match cfg.output_format {
-        OutputFormat::HumanReadable => {
-            println!("Search result:\n");
-            for paper in doc.scrape_papers()? {
-                println!("{}\n", paper);
-            }
-        }
-        OutputFormat::Json => for paper in doc.scrape_papers()? {
-            let j = serde_json::to_string_pretty(&paper)?;
-            println!("{}", j);
-        },
-    }
-
-    Ok(())
 }
