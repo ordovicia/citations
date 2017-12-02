@@ -11,7 +11,7 @@ use std::fs;
 use clap::{App, Arg, ArgGroup, ArgMatches};
 
 use scholar::request;
-use scholar::scrape::{CitationDocument, IdDocument, SearchDocument};
+use scholar::scrape::{CitationDocument, ClusterDocument, SearchDocument};
 
 mod config;
 mod scrape;
@@ -36,11 +36,11 @@ fn run() -> Result<()> {
 
     let cfg = Config::new(&matches);
 
-    if matches.is_present("id") {
-        let id = value_t!(matches, "id", u64).unwrap(); // validated in app()
-        let query = request::IdQuery::new(id);
+    if matches.is_present("cluster-id") {
+        let cluster_id = value_t!(matches, "cluster-id", u64).unwrap(); // validated in app()
+        let query = request::ClusterQuery::new(cluster_id);
         let body = request::send_request(&query)?;
-        let doc = IdDocument::from(&*body);
+        let doc = ClusterDocument::from(&*body);
         doc.scrape(&cfg)?;
 
         return Ok(());
@@ -93,7 +93,7 @@ fn app() -> App<'static, 'static> {
             Arg::with_name("count")
                 .short("c")
                 .long("count")
-                .help("Maximum number of search results")
+                .help("Maximum number of search results (default = 5)")
                 .takes_value(true)
                 .validator(|v| match v.parse::<u32>() {
                     Ok(v) if v > 10 => Err(String::from("The value is too large; exceeding 10")),
@@ -130,17 +130,17 @@ fn app() -> App<'static, 'static> {
             Arg::with_name("title-only")
                 .short("t")
                 .long("title-only")
-                .help("Search only papers which contain specified words in their title")
+                .help("Search only papers which contain specified words in their title (default = false)")
                 .display_order(4),
         )
         .group(
             ArgGroup::with_name("search-query")
                 .args(&["words", "phrase", "authors"])
                 .multiple(true)
-                .conflicts_with_all(&["id", "html"]),
+                .conflicts_with_all(&["cluster-id", "html"]),
         )
         .arg(
-            Arg::with_name("id")
+            Arg::with_name("cluster-id")
                 .long("cluster-id")
                 .help("Search a paper with this cluster ID")
                 .takes_value(true)
@@ -181,7 +181,8 @@ fn app() -> App<'static, 'static> {
 }
 
 fn query_exists(matches: &ArgMatches) -> bool {
-    matches.is_present("search-query") || matches.is_present("html") || matches.is_present("id")
+    matches.is_present("search-query") || matches.is_present("html")
+        || matches.is_present("cluster-id")
 }
 
 #[cfg(test)]

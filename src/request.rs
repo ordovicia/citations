@@ -298,17 +298,17 @@ impl SearchQuery {
     }
 }
 
-pub struct IdQuery {
+pub struct ClusterQuery {
     id: u64,
 }
 
-impl IdQuery {
+impl ClusterQuery {
     pub fn new(id: u64) -> Self {
         Self { id }
     }
 }
 
-impl Query for IdQuery {
+impl Query for ClusterQuery {
     fn to_url(&self) -> Result<Url> {
         let mut url = Url::parse(GOOGLESCHOLAR_URL_BASE).unwrap();
         let query = format!("cluster={}", self.id);
@@ -325,8 +325,8 @@ mod tests {
     fn search_query_to_url() {
         let mut q = SearchQuery::default();
 
-        const NEW_COUNT: u32 = DEFAULT_COUNT + 1;
-        q.set_count(NEW_COUNT);
+        const TEST_COUNT: u32 = DEFAULT_COUNT + 1;
+        q.set_count(TEST_COUNT);
         q.set_phrase("quantum theory");
         q.set_authors("albert einstein");
         q.set_title_only(true);
@@ -349,7 +349,7 @@ mod tests {
                  &num={}\
                  &as_sdt=0%2C5",
                 GOOGLESCHOLAR_URL_BASE,
-                NEW_COUNT
+                TEST_COUNT
             )).unwrap()
         );
     }
@@ -379,11 +379,15 @@ mod tests {
 
     #[test]
     fn id_query_to_url() {
-        const TEST_ID: u64 = 999;
-        let q = IdQuery::new(TEST_ID);
+        const TEST_CLUSTER_ID: u64 = 999;
+        let q = ClusterQuery::new(TEST_CLUSTER_ID);
         assert_eq!(
             q.to_url().unwrap(),
-            Url::parse(&format!("{}?cluster={}", GOOGLESCHOLAR_URL_BASE, TEST_ID)).unwrap()
+            Url::parse(&format!(
+                "{}?cluster={}",
+                GOOGLESCHOLAR_URL_BASE,
+                TEST_CLUSTER_ID
+            )).unwrap()
         );
     }
 }

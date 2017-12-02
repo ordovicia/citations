@@ -1,14 +1,14 @@
 use serde_json;
 
 use config::{Config, OutputFormat};
-use scholar::scrape::{CitationDocument, IdDocument, PapersDocument, SearchDocument};
+use scholar::scrape::{CitationDocument, ClusterDocument, PapersDocument, SearchDocument};
 use errors::*;
 
 pub trait Scrape {
     fn scrape(&self, cfg: &Config) -> Result<()>;
 }
 
-impl Scrape for IdDocument {
+impl Scrape for ClusterDocument {
     fn scrape(&self, cfg: &Config) -> Result<()> {
         let target_paper = self.scrape_target_paper()?;
 

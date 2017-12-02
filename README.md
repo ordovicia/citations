@@ -7,19 +7,20 @@ USAGE:
     scholar [FLAGS] [OPTIONS]
 
 FLAGS:
-    -t, --title-only    Search only papers which contain specified words in their title
+    -t, --title-only    Search only papers which contain specified words in their title (default = false)
         --json          Output in JSON format
     -h, --help          Prints help information
     -V, --version       Prints version information
 
 OPTIONS:
-    -c, --count <count>         Maximum number of search results
-    -w, --words <words>         Search papers with these words
-    -p, --phrase <phrase>       Search papers with this exact phrase
-    -a, --authors <authors>     Search papers with these authors
-        --cluster-id <id>       Search a paper with this cluster ID
-        --search-html <file>    Scrape this HTML file as a search results page (possibly useful only when debugging)
-        --cite-html <file>      Scrape this HTML file as a citers list page (possibly useful only when debugging)
+    -c, --count <count>              Maximum number of search results (default = 5)
+    -w, --words <words>              Search papers with these words
+    -p, --phrase <phrase>            Search papers with this exact phrase
+    -a, --authors <authors>          Search papers with these authors
+        --cluster-id <cluster-id>    Search a paper with this cluster ID
+        --search-html <file>         Scrape this HTML file as a search results page (possibly useful only when
+                                     debugging)
+        --cite-html <file>           Scrape this HTML file as a citers list page (possibly useful only when debugging)
 ```
 
 ## Note

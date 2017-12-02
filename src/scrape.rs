@@ -90,12 +90,12 @@ impl CitationDocument {
         };
 
         let title = node.text();
-        let id = {
+        let cluster_id = {
             let id_url = try_html_bad!(node.attr("href"));
-            parse_id_from_url(id_url)?
+            parse_cluster_id_from_url(id_url)?
         };
 
-        Ok(Paper::new(&title, id))
+        Ok(Paper::new(&title, cluster_id))
     }
 
     pub fn scrape_target_paper_with_citers(&self) -> Result<Paper> {
@@ -108,10 +108,10 @@ impl CitationDocument {
     }
 }
 
-pub struct IdDocument(Document);
-impl_from_to_document!(IdDocument);
+pub struct ClusterDocument(Document);
+impl_from_to_document!(ClusterDocument);
 
-impl IdDocument {
+impl ClusterDocument {
     pub fn scrape_target_paper(&self) -> Result<Paper> {
         let pos = Attr("id", "gs_res_ccl_mid").descendant(Class("gs_ri"));
         let node = try_html_found!(self.find(pos).nth(0));
@@ -121,9 +121,9 @@ impl IdDocument {
 
 fn scrape_paper_one(node: &Node) -> Result<Paper> {
     let (title, link) = scrape_title_and_link(node);
-    let (id, c) = scrape_id_and_citation(node)?;
+    let (cluster_id, c) = scrape_cluster_id_and_citation(node)?;
 
-    let mut paper = Paper::new(&title, id);
+    let mut paper = Paper::new(&title, cluster_id);
     paper.link = link;
     paper.citation_count = Some(c);
 
@@ -183,9 +183,9 @@ fn scrape_title_and_link(node: &Node) -> (String, Option<String>) {
 
 // Scrape article footer for
 //
-// * cluster id, and
+// * cluster ID, and
 // * citation count
-fn scrape_id_and_citation(node: &Node) -> Result<(u64, u32)> {
+fn scrape_cluster_id_and_citation(node: &Node) -> Result<(u64, u32)> {
     // Footer format:
     //
     // <div class="gs_fl">
@@ -201,7 +201,7 @@ fn scrape_id_and_citation(node: &Node) -> Result<(u64, u32)> {
         .into_selection()
         .filter(|n: &Node| {
             if let Some(id_url) = n.attr("href") {
-                parse_id_from_url(id_url).is_ok()
+                parse_cluster_id_from_url(id_url).is_ok()
             } else {
                 false
             }
@@ -209,17 +209,17 @@ fn scrape_id_and_citation(node: &Node) -> Result<(u64, u32)> {
         .first();
     let citation_node = try_html_bad!(citation_node);
 
-    let id = {
+    let cluster_id = {
         let id_url = citation_node.attr("href").unwrap();
-        parse_id_from_url(id_url).unwrap()
+        parse_cluster_id_from_url(id_url).unwrap()
     };
 
     let citation_count = parse_citation_count(&citation_node.text())?;
 
-    Ok((id, citation_count))
+    Ok((cluster_id, citation_count))
 }
 
-fn parse_id_from_url(url: &str) -> Result<u64> {
+fn parse_cluster_id_from_url(url: &str) -> Result<u64> {
     use regex::Regex;
 
     lazy_static! {
@@ -227,12 +227,12 @@ fn parse_id_from_url(url: &str) -> Result<u64> {
     }
 
     let caps = try_html_bad!(RE.captures(url));
-    let id = {
+    let cluster_id = {
         let id = try_html_bad!(caps.get(2));
         id.as_str().parse()?
     };
 
-    Ok(id)
+    Ok(cluster_id)
 }
 
 fn parse_citation_count(text: &str) -> Result<u32> {
@@ -256,20 +256,23 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parse_id_from_url_pass() {
-        assert_eq!(parse_id_from_url("cluster=123456").unwrap(), 123456);
-        assert_eq!(parse_id_from_url("scholar?cluster=654321").unwrap(), 654321);
+    fn parse_cluster_id_from_url_pass() {
+        assert_eq!(parse_cluster_id_from_url("cluster=123456").unwrap(), 123456);
         assert_eq!(
-            parse_id_from_url("scholar?cluster=222222&foo=bar").unwrap(),
+            parse_cluster_id_from_url("scholar?cluster=654321").unwrap(),
+            654321
+        );
+        assert_eq!(
+            parse_cluster_id_from_url("scholar?cluster=222222&foo=bar").unwrap(),
             222222
         );
     }
 
     #[test]
-    fn parse_id_from_url_fail() {
-        assert!(parse_id_from_url("foo").is_err());
-        assert!(parse_id_from_url("claster=000000").is_err());
-        assert!(parse_id_from_url("cluster=aaaaaa").is_err());
+    fn parse_cluster_id_from_url_fail() {
+        assert!(parse_cluster_id_from_url("foo").is_err());
+        assert!(parse_cluster_id_from_url("claster=000000").is_err());
+        assert!(parse_cluster_id_from_url("cluster=aaaaaa").is_err());
     }
 
     #[test]
