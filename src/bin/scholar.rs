@@ -37,7 +37,7 @@ fn run() -> Result<()> {
     let cfg = Config::new(&matches);
 
     if matches.is_present("id") {
-        let id = value_t!(matches, "id", u64).unwrap_or_else(|e| e.exit());
+        let id = value_t!(matches, "id", u64).unwrap(); // validated in app()
         let query = request::IdQuery::new(id);
         let body = request::send_request(&query)?;
         let doc = IdDocument::from(&*body);
@@ -61,7 +61,7 @@ fn run() -> Result<()> {
         let mut query = request::SearchQuery::default();
 
         if matches.is_present("count") {
-            let count = value_t!(matches, "count", u32).unwrap_or_else(|e| e.exit());
+            let count = value_t!(matches, "count", u32).unwrap(); // validated in app()
             query.set_count(count);
         }
         if let Some(words) = matches.value_of("words") {
@@ -95,6 +95,11 @@ fn app() -> App<'static, 'static> {
                 .long("count")
                 .help("Maximum number of search results")
                 .takes_value(true)
+                .validator(|v| match v.parse::<u32>() {
+                    Ok(v) if v > 10 => Err(String::from("The value is too large; exceeding 10")),
+                    Ok(v) if v > 0 => Ok(()),
+                    _ => Err(String::from("The value is not a positive integer")),
+                })
                 .display_order(0),
         )
         .arg(
@@ -139,6 +144,10 @@ fn app() -> App<'static, 'static> {
                 .long("cluster-id")
                 .help("Search a paper with this cluster ID")
                 .takes_value(true)
+                .validator(|v| match v.parse::<u64>() {
+                    Ok(_) => Ok(()),
+                    _ => Err(String::from("The value is not an integer")),
+                })
                 .conflicts_with("html")
                 .display_order(10),
         )
@@ -262,7 +271,7 @@ mod tests {
         assert!(!query_exists(&app().get_matches_from(&["prog"])));
 
         assert!(!query_exists(
-            &app().get_matches_from(&["prog", "--count", "0"])
+            &app().get_matches_from(&["prog", "--count", "1"])
         ));
     }
 }
