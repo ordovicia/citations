@@ -17,9 +17,9 @@ OPTIONS:
     -w, --words <words>         Search papers with these words
     -p, --phrase <phrase>       Search papers with this exact phrase
     -a, --authors <authors>     Search papers with these authors
-        --search-html <file>    Scrape this HTML file as search results (possibly useful only when debugging)
-        --cite-html <file>      Scrape this HTML file as citers list (possibly useful only when debugging)
         --cluster-id <id>       Search a paper with this cluster ID
+        --search-html <file>    Scrape this HTML file as a search results page (possibly useful only when debugging)
+        --cite-html <file>      Scrape this HTML file as a citers list page (possibly useful only when debugging)
 ```
 
 ## Note

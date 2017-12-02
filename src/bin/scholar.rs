@@ -132,44 +132,137 @@ fn app() -> App<'static, 'static> {
             ArgGroup::with_name("search-query")
                 .args(&["words", "phrase", "authors"])
                 .multiple(true)
-                .conflicts_with_all(&["html", "id"]),
-        )
-        .arg(
-            Arg::with_name("search-html")
-                .long("search-html")
-                .help(
-                    "Scrape this HTML file as search results (possibly useful only when debugging)",
-                )
-                .value_name("file")
-                .display_order(10),
-        )
-        .arg(
-            Arg::with_name("cite-html")
-                .long("cite-html")
-                .help("Scrape this HTML file as citers list (possibly useful only when debugging)")
-                .value_name("file")
-                .display_order(11),
-        )
-        .group(
-            ArgGroup::with_name("html")
-                .args(&["search-html", "cite-html"])
-                .conflicts_with("id"),
+                .conflicts_with_all(&["id", "html"]),
         )
         .arg(
             Arg::with_name("id")
                 .long("cluster-id")
                 .help("Search a paper with this cluster ID")
                 .takes_value(true)
+                .conflicts_with("html")
+                .display_order(10),
+        )
+        .arg(
+            Arg::with_name("search-html")
+                .long("search-html")
+                .help(
+                    "Scrape this HTML file as a search results page \
+                     (possibly useful only when debugging)",
+                )
+                .value_name("file")
                 .display_order(20),
         )
+        .arg(
+            Arg::with_name("cite-html")
+                .long("cite-html")
+                .help(
+                    "Scrape this HTML file as a citers list page \
+                     (possibly useful only when debugging)",
+                )
+                .value_name("file")
+                .display_order(21),
+        )
+        .group(ArgGroup::with_name("html").args(&["search-html", "cite-html"]))
         .arg(
             Arg::with_name("json")
                 .long("json")
                 .help("Output in JSON format")
-                .display_order(20),
+                .display_order(30),
         )
 }
 
 fn query_exists(matches: &ArgMatches) -> bool {
     matches.is_present("search-query") || matches.is_present("html") || matches.is_present("id")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn app_arg_conflict_test() {
+        use clap::ErrorKind::ArgumentConflict;
+
+        assert_eq!(
+            app()
+                .get_matches_from_safe(&["prog", "--words", "foo", "--cluster-id", "0"])
+                .unwrap_err()
+                .kind,
+            ArgumentConflict
+        );
+
+        assert_eq!(
+            app()
+                .get_matches_from_safe(&[
+                    "prog",
+                    "--phrase",
+                    r#""foo bar""#,
+                    "--search-html",
+                    "foo.html"
+                ])
+                .unwrap_err()
+                .kind,
+            ArgumentConflict
+        );
+
+        assert_eq!(
+            app()
+                .get_matches_from_safe(&["prog", "--authors", "foo", "--cite-html", "foo.html"])
+                .unwrap_err()
+                .kind,
+            ArgumentConflict
+        );
+
+        assert_eq!(
+            app()
+                .get_matches_from_safe(&["prog", "--cluster-id", "0", "--search-html", "foo.html"])
+                .unwrap_err()
+                .kind,
+            ArgumentConflict
+        );
+
+        assert_eq!(
+            app()
+                .get_matches_from_safe(&[
+                    "prog",
+                    "--search-html",
+                    "foo.html",
+                    "--cite-html",
+                    "foo.html"
+                ])
+                .unwrap_err()
+                .kind,
+            ArgumentConflict
+        );
+    }
+
+    #[test]
+    fn query_exists_test() {
+        assert!(query_exists(
+            &app().get_matches_from(&["prog", "--words", "foo"])
+        ));
+
+        assert!(query_exists(&app()
+            .get_matches_from(&["prog", "--phrase", r#""foo bar""#])));
+
+        assert!(query_exists(
+            &app().get_matches_from(&["prog", "--authors", "foo"])
+        ));
+
+        assert!(query_exists(
+            &app().get_matches_from(&["prog", "--cluster-id", "0"])
+        ));
+
+        assert!(query_exists(&app()
+            .get_matches_from(&["prog", "--search-html", "foo.html"])));
+
+        assert!(query_exists(&app()
+            .get_matches_from(&["prog", "--cite-html", "foo.html"])));
+
+        assert!(!query_exists(&app().get_matches_from(&["prog"])));
+
+        assert!(!query_exists(
+            &app().get_matches_from(&["prog", "--count", "0"])
+        ));
+    }
 }
