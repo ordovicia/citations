@@ -38,9 +38,10 @@ pub struct SearchQuery {
 }
 
 const DEFAULT_COUNT: u32 = 5;
+const MAX_PAGE_RESULTS: u32 = 10;
 
 impl Default for SearchQuery {
-    /// Default `count` is 5.
+    /// Maximum number of search result is defaulting to 5.
     /// Title-only search is disabled.
     fn default() -> Self {
         SearchQuery {
@@ -95,8 +96,8 @@ impl Query for SearchQuery {
 }
 
 impl SearchQuery {
-    /// Set `count` to query limit.
-    /// Maximum `count` is 10; `count` will be rounded down to 10.
+    /// Set `count` to maximum number of search result.
+    /// The `count` will be rounded down to 10.
     ///
     /// Default
     ///
@@ -108,11 +109,12 @@ impl SearchQuery {
     /// let mut q = SearchQuery::default();
     /// q.set_count(2);
     /// assert_eq!(q.get_count(), 2);
+    ///
+    /// q.set_count(11);
+    /// assert_eq!(q.get_count(), 10);
     /// ```
     pub fn set_count(&mut self, count: u32) {
         use std::cmp;
-
-        const MAX_PAGE_RESULTS: u32 = 10;
         self.count = cmp::min(count, MAX_PAGE_RESULTS);
     }
 
@@ -298,22 +300,58 @@ impl SearchQuery {
     }
 }
 
-pub struct ClusterQuery {
-    id: u64,
+/// Query to get list of papers which cites a paper.
+pub struct CitationQuery {
+    citation_url: String,
+    count: u32,
 }
 
-impl ClusterQuery {
-    pub fn new(id: u64) -> Self {
-        Self { id }
+impl Query for CitationQuery {
+    fn to_url(&self) -> Result<Url> {
+        let mut url = Url::parse(&self.citation_url).unwrap();
+        let query = {
+            let q = url.query().unwrap();
+            format!("{}&hl=en&num={}", q, self.count)
+        };
+        url.set_query(Some(&query));
+
+        Ok(url)
     }
+}
+
+impl CitationQuery {
+    pub fn new(citation_url: String) -> Self {
+        Self {
+            citation_url,
+            count: DEFAULT_COUNT,
+        }
+    }
+
+    /// Set `count` to maximum number of search result.
+    /// The `count` will be rounded down to 10.
+    pub fn set_count(&mut self, count: u32) {
+        use std::cmp;
+        self.count = cmp::min(count, MAX_PAGE_RESULTS);
+    }
+}
+
+/// Query to get paper cluster of a specified cluster ID.
+pub struct ClusterQuery {
+    cluster_id: u64,
 }
 
 impl Query for ClusterQuery {
     fn to_url(&self) -> Result<Url> {
         let mut url = Url::parse(GOOGLESCHOLAR_URL_BASE).unwrap();
-        let query = format!("cluster={}", self.id);
+        let query = format!("cluster={}", self.cluster_id);
         url.set_query(Some(&query));
         Ok(url)
+    }
+}
+
+impl ClusterQuery {
+    pub fn new(cluster_id: u64) -> Self {
+        Self { cluster_id }
     }
 }
 
@@ -378,9 +416,36 @@ mod tests {
     }
 
     #[test]
-    fn id_query_to_url() {
+    fn citation_query_to_url() {
+        let mut q = CitationQuery::new(format!("{}?cites=0", GOOGLESCHOLAR_URL_BASE));
+
+        assert_eq!(
+            q.to_url().unwrap(),
+            Url::parse(&format!(
+                "{}?cites=0&hl=en&num={}",
+                GOOGLESCHOLAR_URL_BASE,
+                DEFAULT_COUNT
+            )).unwrap()
+        );
+
+        const TEST_COUNT: u32 = DEFAULT_COUNT + 1;
+        q.set_count(TEST_COUNT);
+
+        assert_eq!(
+            q.to_url().unwrap(),
+            Url::parse(&format!(
+                "{}?cites=0&hl=en&num={}",
+                GOOGLESCHOLAR_URL_BASE,
+                TEST_COUNT
+            )).unwrap()
+        );
+    }
+
+    #[test]
+    fn cluster_query_to_url() {
         const TEST_CLUSTER_ID: u64 = 999;
         let q = ClusterQuery::new(TEST_CLUSTER_ID);
+
         assert_eq!(
             q.to_url().unwrap(),
             Url::parse(&format!(
