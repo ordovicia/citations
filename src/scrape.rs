@@ -26,11 +26,13 @@ impl PapersDocument for Document {
         //   ...
         // </div>
 
-        let pos = Attr("id", "gs_res_ccl_mid").descendant(Class("gs_ri"));
-        let nodes = self.find(pos);
+        let paper_nodes = {
+            let pos = Attr("id", "gs_res_ccl_mid").descendant(Class("gs_ri"));
+            self.find(pos)
+        };
 
         let mut papers = Vec::with_capacity(10);
-        for n in nodes {
+        for n in paper_nodes {
             papers.push(scrape_paper_one(&n)?);
         }
 
@@ -50,20 +52,20 @@ macro_rules! impl_from_to_document {
 
         impl<'a> From<&'a str> for $struct {
             fn from(s: &str) -> Self {
-                let document = Document::from(s);
-                $struct(document)
+                let doc = Document::from(s);
+                $struct(doc)
             }
         }
 
         impl $struct {
-            pub fn new(document: Document) -> Self {
-                $struct(document)
+            pub fn new(doc: Document) -> Self {
+                $struct(doc)
             }
 
             // like Document::from_read()
             pub fn from_read<R: io::Read>(readable: R) -> Result<Self> {
-                let document = Document::from_read(readable)?;
-                Ok(Self::new(document))
+                let doc = Document::from_read(readable)?;
+                Ok(Self::new(doc))
             }
         }
     }
@@ -84,7 +86,16 @@ pub struct CitationDocument(Document);
 impl_from_to_document!(CitationDocument);
 
 impl CitationDocument {
-    pub fn scrape_target_paper(&self) -> Result<Paper> {
+    pub fn scrape_target_paper_with_citers(&self) -> Result<Paper> {
+        let target_paper = self.scrape_target_paper()?;
+        let citers = self.scrape_papers()?;
+
+        let mut paper = target_paper;
+        paper.citers = Some(citers);
+        Ok(paper)
+    }
+
+    fn scrape_target_paper(&self) -> Result<Paper> {
         // <div id="gs_rt_hdr">
         //   <h2>
         //     <a href="https://scholar.google.co.jp/scholar?cluster=0">
@@ -94,29 +105,20 @@ impl CitationDocument {
         //   Something
         // </div>
 
-        let node = {
+        let target_paper_node = {
             let pos = Attr("id", "gs_rt_hdr")
                 .child(Name("h2"))
                 .child(Name("a").or(Text));
             try_html_found!(self.find(pos).nth(0))
         };
 
-        let title = node.text();
+        let title = target_paper_node.text();
         let cluster_id = {
-            let id_url = try_html_bad!(node.attr("href"));
+            let id_url = try_html_bad!(target_paper_node.attr("href"));
             parse_cluster_id(id_url)?
         };
 
         Ok(Paper::new(&title, cluster_id))
-    }
-
-    pub fn scrape_target_paper_with_citers(&self) -> Result<Paper> {
-        let target_paper = self.scrape_target_paper()?;
-        let citers = self.scrape_papers()?;
-
-        let mut paper = target_paper;
-        paper.citers = Some(citers);
-        Ok(paper)
     }
 }
 
@@ -125,21 +127,23 @@ impl_from_to_document!(ClusterDocument);
 
 impl ClusterDocument {
     pub fn scrape_target_paper(&self) -> Result<Paper> {
-        let pos = Attr("id", "gs_res_ccl_mid").descendant(Class("gs_ri"));
-        let node = try_html_found!(self.find(pos).nth(0));
-        scrape_paper_one(&node)
+        let paper_node = {
+            let pos = Attr("id", "gs_res_ccl_mid").descendant(Class("gs_ri"));
+            try_html_found!(self.find(pos).nth(0))
+        };
+        scrape_paper_one(&paper_node)
     }
 }
 
 fn scrape_paper_one(node: &Node) -> Result<Paper> {
     let (title, link) = scrape_title_and_link(node);
     let year = scrape_year(node)?;
-    let (cluster_id, c) = scrape_cluster_id_and_citation(node)?;
+    let (cluster_id, citation_count) = scrape_cluster_id_and_citation(node)?;
 
     let mut paper = Paper::new(&title, cluster_id);
     paper.link = link;
     paper.year = Some(year);
-    paper.citation_count = Some(c);
+    paper.citation_count = Some(citation_count);
 
     Ok(paper)
 }
@@ -169,15 +173,20 @@ fn scrape_title_and_link(node: &Node) -> (String, Option<String>) {
     //   Title of paper or something
     // </h3>
 
-    let pos = Class("gs_rt").child(Name("a"));
-    if let Some(n) = node.find(pos).nth(0) {
+    if let Some(n) = {
+        let pos = Class("gs_rt").child(Name("a"));
+        node.find(pos).nth(0)
+    } {
         // 1. Link to a paper or something
         let title = n.text();
         let link = n.attr("href");
         (title, link.map(ToOwned::to_owned))
     } else {
         // 2. Not a link
-        let children = node.find(Class("gs_rt")).into_selection().children();
+        let children = {
+            let pos = Class("gs_rt");
+            node.find(pos).into_selection().children()
+        };
         let text_nodes = children.filter(|n: &Node| {
             if let Some(name) = n.name() {
                 name != "span"
@@ -208,11 +217,13 @@ fn scrape_title_and_link(node: &Node) -> (String, Option<String>) {
 // </div>
 //
 fn scrape_year(node: &Node) -> Result<u32> {
-    let pos = Class("gs_a").descendant(Text);
-    let year_node = node.find(pos)
-        .into_selection()
-        .filter(|n: &Node| parse_year(&n.text()).is_ok())
-        .first();
+    let year_node = {
+        let pos = Class("gs_a").descendant(Text);
+        node.find(pos)
+            .into_selection()
+            .filter(|n: &Node| parse_year(&n.text()).is_ok())
+            .first()
+    };
     let year_node = try_html_bad!(year_node);
     let year = parse_year(&year_node.text()).unwrap();
 
@@ -232,11 +243,14 @@ fn scrape_cluster_id_and_citation(node: &Node) -> Result<(u64, u32)> {
     //   (Something)
     // </div>
 
-    let pos = Class("gs_fl");
-    let footers = try_html_bad!(node.find(pos).nth(0)).children();
+    let footer_nodes = {
+        let pos = Class("gs_fl");
+        try_html_bad!(node.find(pos).nth(0))
+            .children()
+            .into_selection()
+    };
 
-    let citation_node = footers
-        .into_selection()
+    let citation_node = footer_nodes
         .filter(|n: &Node| {
             if let Some(id_url) = n.attr("href") {
                 parse_cluster_id(id_url).is_ok()
@@ -264,8 +278,8 @@ fn parse_year(text: &str) -> Result<u32> {
         static ref RE: Regex = Regex::new(r"-\s.*((18|19|20)(\d{2}))\s-").unwrap();
     }
 
-    let caps = try_html_bad!(RE.captures(text));
     let year = {
+        let caps = try_html_bad!(RE.captures(text));
         let year = try_html_bad!(caps.get(1));
         year.as_str().parse().unwrap()
     };
@@ -280,8 +294,8 @@ fn parse_cluster_id(url: &str) -> Result<u64> {
         static ref RE: Regex = Regex::new(r"(cluster|cites)=(\d+)").unwrap();
     }
 
-    let caps = try_html_bad!(RE.captures(url));
     let cluster_id = {
+        let caps = try_html_bad!(RE.captures(url));
         let id = try_html_bad!(caps.get(2));
         id.as_str().parse()?
     };
@@ -296,8 +310,8 @@ fn parse_citation_count(text: &str) -> Result<u32> {
         static ref RE: Regex = Regex::new(r"[^\d]+(\d+)").unwrap();
     }
 
-    let caps = try_html_bad!(RE.captures(text));
     let count = {
+        let caps = try_html_bad!(RE.captures(text));
         let count = try_html_bad!(caps.get(1));
         count.as_str().parse().unwrap()
     };
@@ -310,12 +324,25 @@ mod tests {
     use super::*;
 
     #[test]
+    fn parse_year_pass() {
+        assert_eq!(parse_year("foo - 1999 - bar").unwrap(), 1999);
+        assert_eq!(
+            parse_year("foo bar - journal, 2000 - baz, qrux").unwrap(),
+            2000
+        );
+    }
+
+    #[test]
+    fn parse_year_fail() {
+        assert!(parse_year("foo - journal - bar").is_err());
+        assert!(parse_year("1999 - foo").is_err());
+        assert!(parse_year("foo - 1999").is_err());
+    }
+
+    #[test]
     fn parse_cluster_id_pass() {
         assert_eq!(parse_cluster_id("cluster=123456").unwrap(), 123456);
-        assert_eq!(
-            parse_cluster_id("scholar?cluster=654321").unwrap(),
-            654321
-        );
+        assert_eq!(parse_cluster_id("scholar?cluster=654321").unwrap(), 654321);
         assert_eq!(
             parse_cluster_id("scholar?cluster=222222&foo=bar").unwrap(),
             222222
@@ -443,5 +470,10 @@ mod tests {
             paper.citation_count = Some(2911);
             paper
         });
+    }
+
+    #[test]
+    fn cluster_document_scrape_test() {
+        // TODO
     }
 }
