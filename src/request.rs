@@ -41,6 +41,7 @@ const DEFAULT_COUNT: u32 = 5;
 const MAX_PAGE_RESULTS: u32 = 10;
 
 impl Default for SearchQuery {
+    /// Create default SearchQuery.
     /// Maximum number of search result is defaulting to 5.
     /// Title-only search is disabled.
     fn default() -> Self {
@@ -98,8 +99,6 @@ impl Query for SearchQuery {
 impl SearchQuery {
     /// Set `count` to maximum number of search result.
     /// The `count` will be rounded down to 10.
-    ///
-    /// Default
     ///
     /// # Example
     ///
@@ -320,6 +319,8 @@ impl Query for CitationQuery {
 }
 
 impl CitationQuery {
+    /// Create new CitationQuery with `citation_url`.
+    /// Maximum number of search result is defaulting to 5.
     pub fn new(citation_url: String) -> Self {
         Self {
             citation_url,
@@ -329,9 +330,26 @@ impl CitationQuery {
 
     /// Set `count` to maximum number of search result.
     /// The `count` will be rounded down to 10.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use scholar::request::CitationQuery;
+    ///
+    /// let mut q = CitationQuery::new(String::from("https://example.com"));
+    /// q.set_count(2);
+    /// assert_eq!(q.get_count(), 2);
+    ///
+    /// q.set_count(11);
+    /// assert_eq!(q.get_count(), 10);
+    /// ```
     pub fn set_count(&mut self, count: u32) {
         use std::cmp;
         self.count = cmp::min(count, MAX_PAGE_RESULTS);
+    }
+
+    pub fn get_count(&self) -> u32 {
+        self.count
     }
 }
 

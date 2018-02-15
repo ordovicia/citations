@@ -155,10 +155,10 @@ fn scrape_title_and_link(node: &Node) -> (String, Option<String>) {
     //
     // <h3 class="gs_rt">
     //   <span>
-    //       Something
+    //     something
     //   </span>
     //   <a href="http://paper.pdf">
-    //     Title of paper or something
+    //     title of paper or something
     //   </a>
     // </h3>
     //
@@ -168,9 +168,9 @@ fn scrape_title_and_link(node: &Node) -> (String, Option<String>) {
     //
     // <h3 class="gs_rt">
     //   <span>
-    //       Something
+    //     something
     //   </span>
-    //   Title of paper or something
+    //   title of paper or something
     // </h3>
 
     if let Some(n) = {
@@ -238,9 +238,9 @@ fn scrape_cluster_id_and_citation(node: &Node) -> Result<(u64, u32)> {
     // Footer format:
     //
     // <div class="gs_fl">
-    //   (Something)
+    //   something
     //   <a href="/scholar?cites=000000>Cited by 999</a>
-    //   (Something)
+    //   something
     // </div>
 
     let footer_nodes = {

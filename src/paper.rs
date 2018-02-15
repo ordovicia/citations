@@ -38,6 +38,13 @@ Citation count: {}
     }
 }
 
+fn option_na<T: ToString>(c: &Option<T>) -> Cow<'static, str> {
+    match *c {
+        Some(ref c) => c.to_string().into(),
+        None => "N/A".into(),
+    }
+}
+
 impl Paper {
     /// Create new `Paper` with specified `title` and `cluster_id`.
     /// `citation_url` is set according to `cluster_id`.
@@ -49,8 +56,8 @@ impl Paper {
     /// use scholar::paper::Paper;
     ///
     /// let paper = Paper::new("foo", 42);
-    ///
-    /// assert_eq!(paper,
+    /// assert_eq!(
+    ///     paper,
     ///     Paper {
     ///         title: String::from("foo"),
     ///         link: None,
@@ -78,12 +85,5 @@ impl Paper {
 
     fn cluster_id_to_citation_url(id: u64) -> String {
         format!("{}?cites={}", super::GOOGLESCHOLAR_URL_BASE, id)
-    }
-}
-
-fn option_na<T: ToString>(c: &Option<T>) -> Cow<'static, str> {
-    match *c {
-        Some(ref c) => c.to_string().into(),
-        None => "N/A".into(),
     }
 }
