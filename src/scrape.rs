@@ -18,10 +18,10 @@ impl PapersDocument for Document {
     fn scrape_papers(&self) -> Result<Vec<Paper>> {
         // <div id="gs_res_ccl_mid">
         //   <div class="gs_ri">
-        //     Each paper
+        //     each paper
         //   </div>
         //   <div class="gs_ri">
-        //     Each paper
+        //     each paper
         //   </div>
         //   ...
         // </div>
@@ -99,10 +99,10 @@ impl CitationDocument {
         // <div id="gs_rt_hdr">
         //   <h2>
         //     <a href="https://scholar.google.co.jp/scholar?cluster=0">
-        //       Title
+        //       title
         //     </a>
         //   </h2>
-        //   Something
+        //   something
         // </div>
 
         let target_paper_node = {
@@ -137,12 +137,12 @@ impl ClusterDocument {
 
 fn scrape_paper_one(node: &Node) -> Result<Paper> {
     let (title, link) = scrape_title_and_link(node);
-    let year = scrape_year(node)?;
+    let year = scrape_year(node).ok();
     let (cluster_id, citation_count) = scrape_cluster_id_and_citation(node)?;
 
     let mut paper = Paper::new(&title, cluster_id);
     paper.link = link;
-    paper.year = Some(year);
+    paper.year = year;
     paper.citation_count = Some(citation_count);
 
     Ok(paper)
@@ -204,16 +204,29 @@ fn scrape_title_and_link(node: &Node) -> (String, Option<String>) {
     }
 }
 
-// Publishment information format:
+// There are (at least) two formats for publishment information:
+//
+// 1. with journal etc. at the third part:
 //
 // <div class="gs_a">
-//   Author - Journal etc., year - Journal etc.
+//   author - journal etc., year - journal etc.
 // </div>
 //
-// Author and 'Journal etc.' can be a link:
+// 'journal etc.' at the second part may be ommited.
+//
+// 2. only two parts:
 //
 // <div class="gs_a">
-//   <a href="/citations?user=0">Author</a> - Journal etc., year - Journal etc.
+//   author - journal etc., year
+// </div>
+//
+// 'journal etc.' at the second part may be ommited.
+//
+//
+// Author and 'journal etc.' can be a link:
+//
+// <div class="gs_a">
+//   <a href="/citations?user=0">author</a> - journal etc., year - journal etc.
 // </div>
 //
 fn scrape_year(node: &Node) -> Result<u32> {
@@ -275,7 +288,7 @@ fn parse_year(text: &str) -> Result<u32> {
     use regex::Regex;
 
     lazy_static! {
-        static ref RE: Regex = Regex::new(r"-\s.*((18|19|20)(\d{2}))\s-").unwrap();
+        static ref RE: Regex = Regex::new(r".*\s-\s.*((18|19|20)(\d{2}))(\s-\s.+)?").unwrap();
     }
 
     let year = {
@@ -325,18 +338,20 @@ mod tests {
 
     #[test]
     fn parse_year_pass() {
-        assert_eq!(parse_year("foo - 1999 - bar").unwrap(), 1999);
-        assert_eq!(
-            parse_year("foo bar - journal, 2000 - baz, qrux").unwrap(),
-            2000
-        );
+        assert_eq!(parse_year("foo - journal, 2000 - bar").unwrap(), 2000);
+        assert_eq!(parse_year("foo bar - 1999 - baz, qrux").unwrap(), 1999);
+        assert_eq!(parse_year("foo - journal, 1998").unwrap(), 1998);
+        assert_eq!(parse_year("foo - 1899").unwrap(), 1899);
+        assert_eq!(parse_year(" - journal, 1898").unwrap(), 1898);
+        assert_eq!(parse_year(" - 1800").unwrap(), 1800);
     }
 
     #[test]
     fn parse_year_fail() {
         assert!(parse_year("foo - journal - bar").is_err());
-        assert!(parse_year("1999 - foo").is_err());
-        assert!(parse_year("foo - 1999").is_err());
+        assert!(parse_year("foo - journal").is_err());
+        assert!(parse_year("- journal, 1898").is_err());
+        assert!(parse_year("- 1800").is_err());
     }
 
     #[test]
