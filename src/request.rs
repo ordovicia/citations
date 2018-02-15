@@ -386,8 +386,7 @@ mod tests {
                  &hl=en\
                  &num={}\
                  &as_sdt=0%2C5",
-                GOOGLESCHOLAR_URL_BASE,
-                TEST_COUNT
+                GOOGLESCHOLAR_URL_BASE, TEST_COUNT
             )).unwrap()
         );
     }
@@ -423,8 +422,7 @@ mod tests {
             q.to_url().unwrap(),
             Url::parse(&format!(
                 "{}?cites=0&hl=en&num={}",
-                GOOGLESCHOLAR_URL_BASE,
-                DEFAULT_COUNT
+                GOOGLESCHOLAR_URL_BASE, DEFAULT_COUNT
             )).unwrap()
         );
 
@@ -435,8 +433,7 @@ mod tests {
             q.to_url().unwrap(),
             Url::parse(&format!(
                 "{}?cites=0&hl=en&num={}",
-                GOOGLESCHOLAR_URL_BASE,
-                TEST_COUNT
+                GOOGLESCHOLAR_URL_BASE, TEST_COUNT
             )).unwrap()
         );
     }
@@ -450,8 +447,7 @@ mod tests {
             q.to_url().unwrap(),
             Url::parse(&format!(
                 "{}?cluster={}",
-                GOOGLESCHOLAR_URL_BASE,
-                TEST_CLUSTER_ID
+                GOOGLESCHOLAR_URL_BASE, TEST_CLUSTER_ID
             )).unwrap()
         );
     }

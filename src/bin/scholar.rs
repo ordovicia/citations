@@ -248,31 +248,40 @@ mod tests {
 
     #[test]
     fn query_exists_test() {
-        assert!(query_exists(
-            &app().get_matches_from(&["prog", "--words", "foo"])
-        ));
+        assert!(query_exists(&app().get_matches_from(&["prog", "--words", "foo"])));
 
-        assert!(query_exists(&app()
-            .get_matches_from(&["prog", "--phrase", r#""foo bar""#])));
+        assert!(query_exists(&app().get_matches_from(&[
+            "prog",
+            "--phrase",
+            r#""foo bar""#
+        ])));
 
-        assert!(query_exists(
-            &app().get_matches_from(&["prog", "--authors", "foo"])
-        ));
+        assert!(query_exists(&app().get_matches_from(&[
+            "prog",
+            "--authors",
+            "foo"
+        ])));
 
-        assert!(query_exists(
-            &app().get_matches_from(&["prog", "--cluster-id", "0"])
-        ));
+        assert!(query_exists(&app().get_matches_from(&[
+            "prog",
+            "--cluster-id",
+            "0"
+        ])));
 
-        assert!(query_exists(&app()
-            .get_matches_from(&["prog", "--search-html", "foo.html"])));
+        assert!(query_exists(&app().get_matches_from(&[
+            "prog",
+            "--search-html",
+            "foo.html"
+        ])));
 
-        assert!(query_exists(&app()
-            .get_matches_from(&["prog", "--cite-html", "foo.html"])));
+        assert!(query_exists(&app().get_matches_from(&[
+            "prog",
+            "--cite-html",
+            "foo.html"
+        ])));
 
         assert!(!query_exists(&app().get_matches_from(&["prog"])));
 
-        assert!(!query_exists(
-            &app().get_matches_from(&["prog", "--count", "1"])
-        ));
+        assert!(!query_exists(&app().get_matches_from(&["prog", "--count", "1"])));
     }
 }

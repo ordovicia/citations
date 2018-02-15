@@ -2,6 +2,7 @@
 
 use std::fmt;
 use std::borrow::Cow;
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct Paper {
     pub title: String,
