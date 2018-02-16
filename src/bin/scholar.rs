@@ -10,6 +10,7 @@ use std::fs;
 
 use clap::{App, Arg, ArgGroup, ArgMatches};
 
+use scholar::MAX_RESULT_COUNT;
 use scholar::request;
 use scholar::scrape::{CitationDocument, ClusterDocument, SearchDocument};
 
@@ -20,6 +21,8 @@ mod errors;
 use config::Config;
 use scrape::Scrape;
 use errors::*;
+
+const MAX_RECURSIVE_DEPTH: u32 = 5;
 
 quick_main!(run);
 
@@ -60,8 +63,7 @@ fn run() -> Result<()> {
     } else {
         let mut query = request::SearchQuery::default();
 
-        if matches.is_present("count") {
-            let count = value_t!(matches, "count", u32).unwrap(); // validated in app()
+        if let Some(count) = cfg.max_result_count {
             query.set_count(count);
         }
         if let Some(words) = matches.value_of("words") {
@@ -96,7 +98,7 @@ fn app() -> App<'static, 'static> {
                 .help("Maximum number of search results (default = 5)")
                 .takes_value(true)
                 .validator(|v| match v.parse::<u32>() {
-                    Ok(v) if v > 10 => Err(String::from("The value is too large; exceeding 10")),
+                    Ok(v) if v > MAX_RESULT_COUNT => Err(format!("The value is too large; exceeding {}", MAX_RESULT_COUNT)),
                     Ok(v) if v > 0 => Ok(()),
                     _ => Err(String::from("The value is not a positive integer")),
                 })
@@ -159,7 +161,7 @@ fn app() -> App<'static, 'static> {
                      (possibly useful only when debugging)",
                 )
                 .value_name("file")
-                .display_order(20),
+                .display_order(90),
         )
         .arg(
             Arg::with_name("cite-html")
@@ -169,14 +171,27 @@ fn app() -> App<'static, 'static> {
                      (possibly useful only when debugging)",
                 )
                 .value_name("file")
-                .display_order(21),
+                .display_order(91),
         )
         .group(ArgGroup::with_name("html").args(&["search-html", "cite-html"]))
         .arg(
             Arg::with_name("json")
                 .long("json")
                 .help("Output in JSON format")
-                .display_order(30),
+                .display_order(20),
+        )
+        .arg(
+            Arg::with_name("recursive")
+                .short("r")
+                .long("recursive")
+                .help("Search papers recursively with this depth (0-based)")
+                .takes_value(true)
+                .validator(|v| match v.parse::<u32>() {
+                    Ok(v) if v > MAX_RECURSIVE_DEPTH => Err(format!("The value is too large; exceeding {}", MAX_RECURSIVE_DEPTH)),
+                    Ok(v) if v > 0 => Ok(()),
+                    _ => Err(String::from("The value is not a positive integer")),
+                })
+                .display_order(21),
         )
         .arg(
             Arg::with_name("verbose")

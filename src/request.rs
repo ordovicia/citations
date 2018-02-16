@@ -5,7 +5,7 @@ use std::borrow::Cow;
 
 use reqwest::{self, Url};
 
-use super::GOOGLESCHOLAR_URL_BASE;
+use super::{GOOGLESCHOLAR_URL_BASE, MAX_RESULT_COUNT};
 use errors::*;
 
 /// Query to Google Scholar.
@@ -46,9 +46,6 @@ pub struct SearchQuery {
     title_only: bool,
 }
 
-const DEFAULT_MAX_RESULT_COUNT: u32 = 5;
-const MAX_PAGE_RESULTS: u32 = 10;
-
 impl fmt::Display for SearchQuery {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
@@ -72,6 +69,9 @@ fn option_unspecified<T: ToString>(c: &Option<T>) -> Cow<'static, str> {
         None => "(unspecified)".into(),
     }
 }
+
+const DEFAULT_MAX_RESULT_COUNT: u32 = 5;
+
 impl Default for SearchQuery {
     /// Create default SearchQuery.
     /// Maximum number of search result is defaulting to 5.
@@ -146,7 +146,7 @@ impl SearchQuery {
     /// ```
     pub fn set_count(&mut self, max_result_count: u32) {
         use std::cmp;
-        self.max_result_count = cmp::min(max_result_count, MAX_PAGE_RESULTS);
+        self.max_result_count = cmp::min(max_result_count, MAX_RESULT_COUNT);
     }
 
     pub fn get_count(&self) -> u32 {
@@ -389,7 +389,7 @@ impl CitationQuery {
     /// ```
     pub fn set_count(&mut self, max_result_count: u32) {
         use std::cmp;
-        self.max_result_count = cmp::min(max_result_count, MAX_PAGE_RESULTS);
+        self.max_result_count = cmp::min(max_result_count, MAX_RESULT_COUNT);
     }
 
     pub fn get_count(&self) -> u32 {

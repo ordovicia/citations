@@ -1,6 +1,10 @@
 use serde_json;
 
 use config::{Config, OutputFormat};
+
+use scholar;
+use scholar::paper::Paper;
+use scholar::request::CitationQuery;
 use scholar::scrape::{CitationDocument, ClusterDocument, PapersDocument, SearchDocument};
 use errors::*;
 
@@ -18,8 +22,8 @@ impl Scrape for ClusterDocument {
                 println!("{}\n", target_paper);
             }
             OutputFormat::Json => {
-                let j = serde_json::to_string_pretty(&target_paper)?;
-                println!("{}", j);
+                // TODO
+                println!("{}", serde_json::to_string_pretty(&target_paper)?);
             }
         }
 
@@ -39,11 +43,17 @@ impl Scrape for CitationDocument {
                 println!("... is cited by:\n");
                 for citer in target_paper.citers.unwrap() {
                     println!("{}\n", citer);
+
+                    if cfg.recursive_depth > 0 {
+                        recursive_search(&citer, cfg)?;
+                    }
                 }
             }
             OutputFormat::Json => {
-                let j = serde_json::to_string_pretty(&target_paper)?;
-                println!("{}", j);
+                // TODO
+                println!("{}", serde_json::to_string_pretty(&target_paper)?);
+
+                // TODO
             }
         }
 
@@ -53,19 +63,42 @@ impl Scrape for CitationDocument {
 
 impl Scrape for SearchDocument {
     fn scrape(&self, cfg: &Config) -> Result<()> {
+        let papers = self.scrape_papers()?;
+
         match cfg.output_format {
             OutputFormat::HumanReadable => {
                 println!("Search result:\n");
-                for paper in self.scrape_papers()? {
+                for paper in papers {
                     println!("{}\n", paper);
+
+                    if cfg.recursive_depth > 0 {
+                        recursive_search(&paper, cfg)?;
+                    }
                 }
             }
-            OutputFormat::Json => for paper in self.scrape_papers()? {
-                let j = serde_json::to_string_pretty(&paper)?;
-                println!("{}", j);
+            OutputFormat::Json => for paper in papers {
+                println!("{}", serde_json::to_string_pretty(&paper)?);
+
+                if cfg.recursive_depth > 0 {
+                    recursive_search(&paper, cfg)?;
+                }
             },
         }
 
         Ok(())
     }
+}
+
+fn recursive_search(paper: &Paper, cfg: &Config) -> Result<()> {
+    let mut query = CitationQuery::new(&paper.citation_url);
+    if let Some(count) = cfg.max_result_count {
+        query.set_count(count);
+    }
+
+    let body = scholar::request::send_request(&query, cfg.verbose)?;
+    let doc = CitationDocument::from(&*body);
+
+    let mut new_cfg = cfg.clone();
+    new_cfg.recursive_depth -= 1;
+    doc.scrape(&new_cfg)
 }

@@ -17,3 +17,5 @@ pub mod request;
 pub mod scrape;
 
 const GOOGLESCHOLAR_URL_BASE: &str = "https://scholar.google.com/scholar";
+
+pub const MAX_RESULT_COUNT: u32 = 10;
