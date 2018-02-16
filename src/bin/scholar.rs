@@ -39,7 +39,7 @@ fn run() -> Result<()> {
     if matches.is_present("cluster-id") {
         let cluster_id = value_t!(matches, "cluster-id", u64).unwrap(); // validated in app()
         let query = request::ClusterQuery::new(cluster_id);
-        let body = request::send_request(&query)?;
+        let body = request::send_request(&query, cfg.verbose)?;
         let doc = ClusterDocument::from(&*body);
         doc.scrape(&cfg)?;
 
@@ -77,7 +77,7 @@ fn run() -> Result<()> {
             query.set_title_only(true);
         }
 
-        let body = request::send_request(&query)?;
+        let body = request::send_request(&query, cfg.verbose)?;
         SearchDocument::from(&*body)
     };
 
@@ -177,6 +177,13 @@ fn app() -> App<'static, 'static> {
                 .long("json")
                 .help("Output in JSON format")
                 .display_order(30),
+        )
+        .arg(
+            Arg::with_name("verbose")
+            .short("v")
+            .long("verbose")
+            .help("Verbose mode")
+            .display_order(22)
         )
 }
 

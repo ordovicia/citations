@@ -1,5 +1,8 @@
 //! Send requests to Google Scholar.
 
+use std::fmt;
+use std::borrow::Cow;
+
 use reqwest::{self, Url};
 
 use super::GOOGLESCHOLAR_URL_BASE;
@@ -16,13 +19,19 @@ pub trait Query {
 /// # Return value
 ///
 /// `Ok` of response body in `String`, or `Error`.
-pub fn send_request<Q: Query>(query: &Q) -> Result<String> {
+pub fn send_request<Q: Query + fmt::Display>(query: &Q, verbose: bool) -> Result<String> {
     use reqwest::header::UserAgent;
 
     const USER_AGENT: &str = "Mozilla/5.0 (X11; Linux x86_64; rv:57.0) Gecko/20100101 Firefox/57.0";
 
     let client = reqwest::Client::new();
     let url = query.to_url()?;
+
+    if verbose {
+        println!("Sending {}", query);
+        println!("(URL: {})", url);
+    }
+
     let mut res = client.get(url).header(UserAgent::new(USER_AGENT)).send()?;
 
     let body = res.text()?;
@@ -40,6 +49,29 @@ pub struct SearchQuery {
 const DEFAULT_COUNT: u32 = 5;
 const MAX_PAGE_RESULTS: u32 = 10;
 
+impl fmt::Display for SearchQuery {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            r#"query to search for papers of:
+          authors: {},
+            words: {},
+title-only search: {},
+     max #results: {}"#,
+            option_unspecified(&self.authors),
+            option_unspecified(&self.words),
+            self.title_only,
+            self.max_result_count
+        )
+    }
+}
+
+fn option_unspecified<T: ToString>(c: &Option<T>) -> Cow<'static, str> {
+    match *c {
+        Some(ref c) => c.to_string().into(),
+        None => "(unspecified)".into(),
+    }
+}
 impl Default for SearchQuery {
     /// Create default SearchQuery.
     /// Maximum number of search result is defaulting to 5.
@@ -305,6 +337,18 @@ pub struct CitationQuery {
     count: u32,
 }
 
+impl fmt::Display for CitationQuery {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            r#"query to get list of papers which cites a paper of:
+URL of the paper: {},
+    max #results: {}"#,
+            self.citation_url, self.max_result_count
+        )
+    }
+}
+
 impl Query for CitationQuery {
     fn to_url(&self) -> Result<Url> {
         let mut url = Url::parse(&self.citation_url).unwrap();
@@ -356,6 +400,16 @@ impl CitationQuery {
 /// Query to get paper cluster of a specified cluster ID.
 pub struct ClusterQuery {
     cluster_id: u64,
+}
+
+impl fmt::Display for ClusterQuery {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "query to get a paper whose cluster ID is {}",
+            self.cluster_id,
+        )
+    }
 }
 
 impl Query for ClusterQuery {
