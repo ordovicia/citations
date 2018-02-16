@@ -365,7 +365,7 @@ impl Query for CitationQuery {
 impl CitationQuery {
     /// Create new CitationQuery with `citation_url`.
     /// Maximum number of search result is defaulting to 5.
-    pub fn new(citation_url: String) -> Self {
+    pub fn new(citation_url: &str) -> Self {
         Self {
             citation_url: citation_url.to_owned(),
             max_result_count: DEFAULT_MAX_RESULT_COUNT,
@@ -380,7 +380,7 @@ impl CitationQuery {
     /// ```
     /// use scholar::request::CitationQuery;
     ///
-    /// let mut q = CitationQuery::new(String::from("https://example.com"));
+    /// let mut q = CitationQuery::new("https://example.com");
     /// q.set_count(2);
     /// assert_eq!(q.get_count(), 2);
     ///
@@ -488,7 +488,7 @@ mod tests {
 
     #[test]
     fn citation_query_to_url() {
-        let mut q = CitationQuery::new(format!("{}?cites=0", GOOGLESCHOLAR_URL_BASE));
+        let mut q = CitationQuery::new(&format!("{}?cites=0", GOOGLESCHOLAR_URL_BASE));
 
         assert_eq!(
             q.to_url().unwrap(),
