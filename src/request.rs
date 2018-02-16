@@ -40,13 +40,13 @@ pub fn send_request<Q: Query + fmt::Display>(query: &Q, verbose: bool) -> Result
 
 /// Query to search Google Scholar for papers.
 pub struct SearchQuery {
-    count: u32,
+    max_result_count: u32,
     words: Option<String>,
     authors: Option<String>,
     title_only: bool,
 }
 
-const DEFAULT_COUNT: u32 = 5;
+const DEFAULT_MAX_RESULT_COUNT: u32 = 5;
 const MAX_PAGE_RESULTS: u32 = 10;
 
 impl fmt::Display for SearchQuery {
@@ -78,7 +78,7 @@ impl Default for SearchQuery {
     /// Title-only search is disabled.
     fn default() -> Self {
         SearchQuery {
-            count: DEFAULT_COUNT,
+            max_result_count: DEFAULT_MAX_RESULT_COUNT,
             words: None,
             authors: None,
             title_only: false,
@@ -120,7 +120,7 @@ impl Query for SearchQuery {
             option_stringify!(self.words),
             if self.title_only { "title" } else { "any" },
             option_stringify!(self.authors),
-            self.count,
+            self.max_result_count,
         );
         url.set_query(Some(&query));
 
@@ -129,8 +129,8 @@ impl Query for SearchQuery {
 }
 
 impl SearchQuery {
-    /// Set `count` to maximum number of search result.
-    /// The `count` will be rounded down to 10.
+    /// Set `max_result_count` to maximum number of search result.
+    /// The `max_result_count` will be rounded down to 10.
     ///
     /// # Example
     ///
@@ -144,13 +144,13 @@ impl SearchQuery {
     /// q.set_count(11);
     /// assert_eq!(q.get_count(), 10);
     /// ```
-    pub fn set_count(&mut self, count: u32) {
+    pub fn set_count(&mut self, max_result_count: u32) {
         use std::cmp;
-        self.count = cmp::min(count, MAX_PAGE_RESULTS);
+        self.max_result_count = cmp::min(max_result_count, MAX_PAGE_RESULTS);
     }
 
     pub fn get_count(&self) -> u32 {
-        self.count
+        self.max_result_count
     }
 
     /// Set `words` to search query.
@@ -334,7 +334,7 @@ impl SearchQuery {
 /// Query to get list of papers which cites a paper.
 pub struct CitationQuery {
     citation_url: String,
-    count: u32,
+    max_result_count: u32,
 }
 
 impl fmt::Display for CitationQuery {
@@ -354,7 +354,7 @@ impl Query for CitationQuery {
         let mut url = Url::parse(&self.citation_url).unwrap();
         let query = {
             let q = url.query().unwrap();
-            format!("{}&hl=en&num={}", q, self.count)
+            format!("{}&hl=en&num={}", q, self.max_result_count)
         };
         url.set_query(Some(&query));
 
@@ -367,13 +367,13 @@ impl CitationQuery {
     /// Maximum number of search result is defaulting to 5.
     pub fn new(citation_url: String) -> Self {
         Self {
-            citation_url,
-            count: DEFAULT_COUNT,
+            citation_url: citation_url.to_owned(),
+            max_result_count: DEFAULT_MAX_RESULT_COUNT,
         }
     }
 
-    /// Set `count` to maximum number of search result.
-    /// The `count` will be rounded down to 10.
+    /// Set `max_result_count` to maximum number of search result.
+    /// The `max_result_count` will be rounded down to 10.
     ///
     /// # Example
     ///
@@ -387,13 +387,13 @@ impl CitationQuery {
     /// q.set_count(11);
     /// assert_eq!(q.get_count(), 10);
     /// ```
-    pub fn set_count(&mut self, count: u32) {
+    pub fn set_count(&mut self, max_result_count: u32) {
         use std::cmp;
-        self.count = cmp::min(count, MAX_PAGE_RESULTS);
+        self.max_result_count = cmp::min(max_result_count, MAX_PAGE_RESULTS);
     }
 
     pub fn get_count(&self) -> u32 {
-        self.count
+        self.max_result_count
     }
 }
 
@@ -435,7 +435,7 @@ mod tests {
     fn search_query_to_url() {
         let mut q = SearchQuery::default();
 
-        const TEST_COUNT: u32 = DEFAULT_COUNT + 1;
+        const TEST_COUNT: u32 = DEFAULT_MAX_RESULT_COUNT + 1;
         q.set_count(TEST_COUNT);
         q.set_phrase("quantum theory");
         q.set_authors("albert einstein");
@@ -494,11 +494,11 @@ mod tests {
             q.to_url().unwrap(),
             Url::parse(&format!(
                 "{}?cites=0&hl=en&num={}",
-                GOOGLESCHOLAR_URL_BASE, DEFAULT_COUNT
+                GOOGLESCHOLAR_URL_BASE, DEFAULT_MAX_RESULT_COUNT
             )).unwrap()
         );
 
-        const TEST_COUNT: u32 = DEFAULT_COUNT + 1;
+        const TEST_COUNT: u32 = DEFAULT_MAX_RESULT_COUNT + 1;
         q.set_count(TEST_COUNT);
 
         assert_eq!(
