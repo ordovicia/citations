@@ -135,10 +135,27 @@ impl ClusterDocument {
     }
 }
 
+struct ArticleTitle {
+    title: String,
+    link: Option<String>,
+}
+
+struct ArticleHeader {
+    year: Option<u32>,
+}
+
+struct ArticleFooter {
+    cluster_id: u64,
+    citation_count: u32,
+}
+
 fn scrape_paper_one(node: &Node) -> Result<Paper> {
-    let (title, link) = scrape_title_and_link(node);
-    let year = scrape_year(node).ok();
-    let (cluster_id, citation_count) = scrape_cluster_id_and_citation(node)?;
+    let ArticleTitle { title, link } = scrape_article_title(node);
+    let ArticleHeader { year } = scrape_article_header(node);
+    let ArticleFooter {
+        cluster_id,
+        citation_count,
+    } = scrape_article_footer(node)?;
 
     let mut paper = Paper::new(&title, cluster_id);
     paper.link = link;
@@ -148,7 +165,7 @@ fn scrape_paper_one(node: &Node) -> Result<Paper> {
     Ok(paper)
 }
 
-fn scrape_title_and_link(node: &Node) -> (String, Option<String>) {
+fn scrape_article_title(node: &Node) -> ArticleTitle {
     // There are (at least) two formats.
     //
     // 1. Link to a paper or something:
@@ -178,9 +195,10 @@ fn scrape_title_and_link(node: &Node) -> (String, Option<String>) {
         node.find(pos).nth(0)
     } {
         // 1. Link to a paper or something
-        let title = n.text();
-        let link = n.attr("href");
-        (title, link.map(ToOwned::to_owned))
+        ArticleTitle {
+            title: n.text(),
+            link: n.attr("href").map(ToOwned::to_owned),
+        }
     } else {
         // 2. Not a link
         let children = {
@@ -200,36 +218,39 @@ fn scrape_title_and_link(node: &Node) -> (String, Option<String>) {
             .collect::<String>()
             .trim()
             .to_string();
-        (concated_text, None)
+        ArticleTitle {
+            title: concated_text,
+            link: None,
+        }
     }
 }
 
-// There are (at least) two formats for publishment information:
-//
-// 1. with journal etc. at the third part:
-//
-// <div class="gs_a">
-//   author - journal etc., year - journal etc.
-// </div>
-//
-// 'journal etc.' at the second part may be ommited.
-//
-// 2. only two parts:
-//
-// <div class="gs_a">
-//   author - journal etc., year
-// </div>
-//
-// 'journal etc.' at the second part may be ommited.
-//
-//
-// Author and 'journal etc.' can be a link:
-//
-// <div class="gs_a">
-//   <a href="/citations?user=0">author</a> - journal etc., year - journal etc.
-// </div>
-//
-fn scrape_year(node: &Node) -> Result<u32> {
+fn scrape_article_header(node: &Node) -> ArticleHeader {
+    // There are (at least) two formats for publishment information:
+    //
+    // 1. with journal etc. at the third part:
+    //
+    // <div class="gs_a">
+    //   author - journal etc., year - journal etc.
+    // </div>
+    //
+    // 'journal etc.' at the second part may be ommited.
+    //
+    // 2. only two parts:
+    //
+    // <div class="gs_a">
+    //   author - journal etc., year
+    // </div>
+    //
+    // 'journal etc.' at the second part may be ommited.
+    //
+    //
+    // Author and 'journal etc.' can be a link:
+    //
+    // <div class="gs_a">
+    //   <a href="/citations?user=0">author</a> - journal etc., year - journal etc.
+    // </div>
+
     let year_node = {
         let pos = Class("gs_a").descendant(Text);
         node.find(pos)
@@ -237,17 +258,28 @@ fn scrape_year(node: &Node) -> Result<u32> {
             .filter(|n: &Node| parse_year(&n.text()).is_ok())
             .first()
     };
-    let year_node = try_html_bad!(year_node);
-    let year = parse_year(&year_node.text()).unwrap();
+    let year = year_node.map(|n| parse_year(&n.text()).unwrap());
+
+    ArticleHeader { year }
+}
+
+fn parse_year(text: &str) -> Result<u32> {
+    use regex::Regex;
+
+    lazy_static! {
+        static ref RE: Regex = Regex::new(r".*\s-\s.*((18|19|20)(\d{2}))(\s-\s.+)?").unwrap();
+    }
+
+    let year = {
+        let caps = try_html_bad!(RE.captures(text));
+        let year = try_html_bad!(caps.get(1));
+        year.as_str().parse().unwrap()
+    };
 
     Ok(year)
 }
 
-// Scrape article footer for
-//
-// * cluster ID, and
-// * citation count
-fn scrape_cluster_id_and_citation(node: &Node) -> Result<(u64, u32)> {
+fn scrape_article_footer(node: &Node) -> Result<ArticleFooter> {
     // Footer format:
     //
     // <div class="gs_fl">
@@ -278,26 +310,12 @@ fn scrape_cluster_id_and_citation(node: &Node) -> Result<(u64, u32)> {
         let id_url = citation_node.attr("href").unwrap();
         parse_cluster_id(id_url).unwrap()
     };
-
     let citation_count = parse_citation_count(&citation_node.text())?;
 
-    Ok((cluster_id, citation_count))
-}
-
-fn parse_year(text: &str) -> Result<u32> {
-    use regex::Regex;
-
-    lazy_static! {
-        static ref RE: Regex = Regex::new(r".*\s-\s.*((18|19|20)(\d{2}))(\s-\s.+)?").unwrap();
-    }
-
-    let year = {
-        let caps = try_html_bad!(RE.captures(text));
-        let year = try_html_bad!(caps.get(1));
-        year.as_str().parse().unwrap()
-    };
-
-    Ok(year)
+    Ok(ArticleFooter {
+        cluster_id,
+        citation_count,
+    })
 }
 
 fn parse_cluster_id(url: &str) -> Result<u64> {
