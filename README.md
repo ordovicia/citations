@@ -9,6 +9,7 @@ USAGE:
 FLAGS:
     -t, --title-only    Search only papers which contain specified words in their title (default = false)
         --json          Output in JSON format
+    -v, --verbose       Verbose mode
     -h, --help          Prints help information
     -V, --version       Prints version information
 
@@ -18,6 +19,8 @@ OPTIONS:
     -p, --phrase <phrase>            Search papers with this exact phrase
     -a, --authors <authors>          Search papers with these authors
         --cluster-id <cluster-id>    Search a paper with this cluster ID
+    -r, --recursive <recursive>      Search papers recursively with this depth (0-based). JSON output is enabled
+                                     automatically.
         --search-html <file>         Scrape this HTML file as a search results page (possibly useful only when
                                      debugging)
         --cite-html <file>           Scrape this HTML file as a citers list page (possibly useful only when debugging)
