@@ -8,4 +8,10 @@ error_chain! {
     links {
         Scholar(::scholar::errors::Error, ::scholar::errors::ErrorKind);
     }
+
+    errors {
+        Blocked {
+            description("Request blocked")
+        }
+    }
 }

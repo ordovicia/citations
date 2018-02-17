@@ -28,8 +28,6 @@ OPTIONS:
 If you send requests too frequently, Google Scholar will block your access temporarily.
 I will not offer any workaround for this situation.
 
-Currently, this program outputs nothing when blocked.
+## Related Project
 
-## Related Projects
-
-* Inspired by [ckreibich/scholar.py](https://github.com/ckreibich/scholar.py)
+Inspired by [ckreibich/scholar.py](https://github.com/ckreibich/scholar.py)

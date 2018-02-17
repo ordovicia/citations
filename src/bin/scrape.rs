@@ -7,7 +7,17 @@ use scholar::scrape::{CitationDocument, ClusterDocument, PapersDocument, SearchD
 use config::{Config, OutputFormat};
 use errors::*;
 
+macro_rules! exit_blocked {
+    ($doc: ident) => {
+        if $doc.is_blocked() {
+            return Err(ErrorKind::Blocked.into());
+        }
+    }
+}
+
 pub fn scrape_cluster_doc(doc: &ClusterDocument, cfg: &Config) -> Result<()> {
+    exit_blocked!(doc);
+
     let paper = {
         let mut p = doc.scrape_target_paper()?;
 
@@ -32,6 +42,8 @@ pub fn scrape_cluster_doc(doc: &ClusterDocument, cfg: &Config) -> Result<()> {
 }
 
 pub fn scrape_citaiton_doc(doc: &CitationDocument, cfg: &Config) -> Result<()> {
+    exit_blocked!(doc);
+
     let paper = {
         let mut p = doc.scrape_target_paper_with_citers()?;
 
@@ -66,6 +78,8 @@ pub fn scrape_citaiton_doc(doc: &CitationDocument, cfg: &Config) -> Result<()> {
 }
 
 pub fn scrape_search_doc(doc: &SearchDocument, cfg: &Config) -> Result<()> {
+    exit_blocked!(doc);
+
     let papers = {
         let mut papers = doc.scrape_papers()?;
 
@@ -115,6 +129,7 @@ fn recursive_search(paper: &Paper, cfg: &Config) -> Result<Paper> {
 
     let body = send_request(&query, cfg.verbose)?;
     let doc = CitationDocument::from(&*body);
+    exit_blocked!(doc);
 
     let mut new_paper = doc.scrape_target_paper_with_citers()?;
     let new_citers = new_paper

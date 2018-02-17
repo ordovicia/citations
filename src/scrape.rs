@@ -11,7 +11,11 @@ use paper::Paper;
 use errors::*;
 
 pub trait PapersDocument {
+    /// Scrape listed papers.
     fn scrape_papers(&self) -> Result<Vec<Paper>>;
+
+    /// Determine whether Google Scholar blocked your request.
+    fn is_blocked(&self) -> bool;
 }
 
 impl PapersDocument for Document {
@@ -37,6 +41,20 @@ impl PapersDocument for Document {
         }
 
         Ok(papers)
+    }
+
+    fn is_blocked(&self) -> bool {
+        let pos = Name("div").child(Name("div")).child(Text);
+        let blocked_node = self.find(pos).filter(|n: &Node| {
+            n.as_text()
+                .and_then(|s| {
+                    Some(s.contains(
+                        "Our systems have detected unusual traffic from your computer network.",
+                    ))
+                })
+                .unwrap_or(false)
+        });
+        blocked_node.count() > 0
     }
 }
 
@@ -398,6 +416,24 @@ mod tests {
     #[test]
     fn parse_citation_count_fail() {
         assert!(parse_citation_count("foo").is_err());
+    }
+
+    #[test]
+    fn is_blocked_test() {
+        use std::fs;
+
+        let blocked_doc = {
+            let file = fs::File::open("src/test_html/blocked.html").unwrap();
+            Document::from_read(file).unwrap()
+        };
+        assert!(blocked_doc.is_blocked());
+
+        let unblocked_doc = {
+            let file = fs::File::open("src/test_html/quantum_theory.html").unwrap();
+            Document::from_read(file).unwrap()
+        };
+
+        assert!(!unblocked_doc.is_blocked());
     }
 
     #[test]
