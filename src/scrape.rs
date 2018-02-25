@@ -543,6 +543,24 @@ mod tests {
 
     #[test]
     fn cluster_document_scrape_test() {
-        // TODO
+        use std::fs;
+
+        let doc = {
+            let file = fs::File::open("src/test_html/quantum_theory_cluster.html").unwrap();
+            ClusterDocument::from_read(file).unwrap()
+        };
+
+        let target_paper = doc.scrape_target_paper().unwrap();
+
+        assert_eq!(target_paper, {
+            let mut paper = Paper::new(
+                "Quantum field theory and critical phenomena",
+                6453279145216378381,
+            );
+            paper.year = Some(1996);
+            paper.link = Some(String::from("http://cds.cern.ch/record/2280881"));
+            paper.citation_count = Some(4932);
+            paper
+        });
     }
 }
